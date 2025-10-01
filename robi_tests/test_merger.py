@@ -107,28 +107,45 @@ def test_brute_force_step():
 
 
 def test_smart_step():
+
+    # just a bunch of words withcounts
     pretokenized_counts = Counter()
     for i in range(10):
         word = random_string(12)
         pretokenized_counts[word] = random.randint(1, 10)
 
+    # repeating the variable for the smart version
     smart_pretokenized_counts = pretokenized_counts
 
+    # taking each word and representing as a list of bytes. these will change over time
     tokenized_pretokens = {}
     current_tokens = [bytes([b]) for b in range(256)]
     for pretoken in pretokenized_counts:
         tokenized_pretokens[pretoken] = [bytes([b]) for b in pretoken.encode('utf-8')]
 
 
+
+    # doing the same thing a second time for the smart version
     smart_tokenized_pretokens = {}
     smart_current_tokens = [bytes([b]) for b in range(256)]
     for pretoken in smart_pretokenized_counts:
         smart_tokenized_pretokens[pretoken] = [bytes([b]) for b in pretoken.encode('utf-8')]
+
+    # create nodes that correspond to the smart tokenized pretokens
     pretoken_nodes = get_nodes(tokenized_pretokens=smart_tokenized_pretokens, 
                                pretokenized_counts=pretokenized_counts)
+    
+    # creates a dictionary that tells which nodes correspond to each bytes_value
     bytes_nodes = get_bytes_nodes(pretoken_nodes=pretoken_nodes)
+
+    # intiailizing a count over pairs of bytes frequencies
     pair_counter = initialize_pair_counter(pretoken_nodes=pretoken_nodes)
+
+    # turning the pair_counter into a heap
     best_pair_heap = CounterHeap(pair_counter)
+
+    # setting up merges, which we will return later
+    merges = []
 
     for i in range(50):
         brute_force_step(
@@ -138,7 +155,7 @@ def test_smart_step():
         )
 
         smart_step(
-            pretoken_nodes=pretoken_nodes,
+            merges=merges,
             bytes_nodes=bytes_nodes,
             current_tokens=smart_current_tokens,
             best_pair_heap=best_pair_heap

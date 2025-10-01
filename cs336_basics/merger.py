@@ -83,37 +83,21 @@ def initialize_pair_counter(pretoken_nodes:dict[str, BytesNode])->Counter[tuple[
 
 
 def smart_step(
-    pretoken_nodes:dict[str, BytesNode],
     bytes_nodes:dict[bytes, set[BytesNode]],
     current_tokens:list[bytes],
-    best_pair_heap:CounterHeap
+    best_pair_heap:CounterHeap,
+    merges:list[tuple[bytes, bytes]]
 ) -> None:
     
     best_pair = best_pair_heap.get_merge()
-            
-    # just a sanity check
-    # manual_computed_pair = None
-    # for pair in best_pair_heap.pair_counter:
-    #     if manual_computed_pair is None:
-    #         manual_computed_pair = pair 
-    #     elif best_pair_heap.pair_counter[pair] > best_pair_heap.pair_counter[manual_computed_pair]:
-    #         manual_computed_pair = pair
-    #     elif best_pair_heap.pair_counter[pair] == best_pair_heap.pair_counter[manual_computed_pair] and pair > manual_computed_pair:
-    #         manual_computed_pair = pair
-    #     else:
-    #         pass
-
-    # if best_pair_heap.pair_counter[manual_computed_pair] == 0:
-    #     manual_computed_pair = None
-
-    # assert(manual_computed_pair == best_pair)
-
     if best_pair is None:
         return None
 
     (first_bytes, second_bytes) = best_pair
     new_token_bytes = first_bytes + second_bytes
     current_tokens.append(new_token_bytes)
+
+    merges.append((first_bytes, second_bytes))
 
     del_set = set([])
 
@@ -203,3 +187,41 @@ def smart_step(
             pair_counter_delta[(current_token, bytes_value)] += 0
 
     best_pair_heap.modify_counts(new_counts=pair_counter_delta)
+
+
+def get_tokens_and_merges(
+    pretokenized_counts: Counter[str],
+    number_of_merges: int
+)->tuple[list[bytes], list[tuple[bytes, bytes]]]:
+
+    # setting up the tokens that we will return
+    current_tokens = [bytes([b]) for b in range(256)]
+
+    # taking each word and representing as a list of bytes. these will change over time
+    tokenized_pretokens = {}
+    for pretoken in pretokenized_counts:
+        tokenized_pretokens[pretoken] = [bytes([b]) for b in pretoken.encode('utf-8')]
+
+    # create nodes that correspond to the smart tokenized pretokens
+    pretoken_nodes = get_nodes(tokenized_pretokens=tokenized_pretokens, 
+                               pretokenized_counts=pretokenized_counts)
+    
+    # creates a dictionary that tells which nodes correspond to each bytes_value
+    bytes_nodes = get_bytes_nodes(pretoken_nodes=pretoken_nodes)
+
+    # intiailizing a count over pairs of bytes frequencies
+    pair_counter = initialize_pair_counter(pretoken_nodes=pretoken_nodes)
+
+    # turning the pair_counter into a heap
+    best_pair_heap = CounterHeap(pair_counter)
+
+    # setting up merges
+    merges = []
+
+    for i in range(number_of_merges):
+        smart_step(
+            bytes_nodes=bytes_nodes,
+            current_tokens=current_tokens,
+            best_pair_heap=best_pair_heap,
+            merges=merges
+        )
