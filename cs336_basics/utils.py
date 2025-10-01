@@ -1,4 +1,11 @@
 from collections import Counter
+import random
+import string
+
+
+def random_string(length: int)->str:
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(random.choice(alphabet) for _ in range(length))
 
 
 def print_counter(counter: Counter[str]):

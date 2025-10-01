@@ -171,21 +171,9 @@ def pretokenize_file_parallel(
     return count
 
 
-# --- entry point with profiling ---
 if __name__ == "__main__":
     filename = "data/TinyStoriesV2-GPT4-train.txt"
     special_tokens = ["<|endoftext|>"]
     chunk_size = 64000
     result = pretokenize_file_parallel(filename, special_tokens, True, chunk_size, 4)
     print(len(result))
-
-
-    """ for chunk_size in [1000, 2000, 4000, 8000, 16000, 32000, 64000]:
-        print("\nProfiling with chunk size =", chunk_size)
-        profiler = cProfile.Profile()
-        profiler.enable()
-        result = pretokenize_file_parallel(filename, special_tokens, True, chunk_size, 4)
-        profiler.disable()
-
-        stats = pstats.Stats(profiler).sort_stats("cumulative")
-        stats.print_stats(20)   # show top 20 slowest functions """
