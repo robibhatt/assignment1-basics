@@ -10,7 +10,7 @@ def test_pretokenize_section():
     special_tokens = ['<|endoftext|>']
     max_length = max([len(special_token.encode('utf-8')) for special_token in special_tokens])
     special_token_pattern = '|'.join([re.escape(spec) for spec in special_tokens])
-    with open('data/TinyStoriesV2-GPT4-valid.txt', 'rb') as f:
+    with open('data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-valid.txt', 'rb') as f:
         start = 1354
         end = 34536
         chunk_size = 400
@@ -40,7 +40,7 @@ def pretokenize_section_slow(
 
 
 def test_pretokenize_file():
-    filename = "data/TinyStoriesV2-GPT4-valid.txt"
+    filename = "data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-valid.txt"
     special_tokens = ["<|endoftext|>"]
     first_count = pretokenize_file(filename, special_tokens, 1024)
     second_count = pretokenize_file(filename, special_tokens, 24123)
@@ -73,7 +73,7 @@ def pretokenize_file(
 
 
 def test_pretokenize_parllel():
-    filename = "data/TinyStoriesV2-GPT4-valid.txt"
+    filename = "data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-valid.txt"
     special_tokens = ["<|endoftext|>"]
     first_count = pretokenize_file(filename, special_tokens, 1024)
     second_count = pretokenize_file_parallel(filename, special_tokens, 1024, 4)
