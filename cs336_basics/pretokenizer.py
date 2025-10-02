@@ -172,7 +172,7 @@ def pretokenize_file_parallel(
 
 
 if __name__ == "__main__":
-    filename = "data/TinyStoriesV2-GPT4-train.txt"
+    filename = "data/TinyStoriesV2-GPT4-valid.txt"
     special_tokens = ["<|endoftext|>"]
     chunk_size = 64000
     result = pretokenize_file_parallel(filename, special_tokens, True, chunk_size, 4)

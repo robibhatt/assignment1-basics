@@ -110,6 +110,7 @@ def smart_step(
                 if new_token_bytes not in bytes_nodes:
                     bytes_nodes[new_token_bytes] = set([])
                 bytes_nodes[new_token_bytes].add(new_node)
+                assert(new_node is not None)
                 assert(new_node.rep_factor is not None)
                 new_node.nxt = succ.nxt
                 if succ.nxt is not None:
@@ -128,15 +129,18 @@ def smart_step(
         new_first_bytes_set = set([])
         while len(bytes_nodes[first_bytes]) > 0:
             node = next(iter(bytes_nodes[first_bytes]))
+            assert(node is not None)
             while node.prev.bytes_value == node.bytes_value:
                 node = node.prev
-            while (node.nxt is not None) and (node.bytes_value == first_bytes) and (node.nxt.bytes_value == first_bytes):
+            assert(node is not None)
+            while (node is not None) and (node.nxt is not None) and (node.bytes_value == first_bytes) and (node.nxt.bytes_value == first_bytes):
 
                 # create the new node
                 new_node = BytesNode(bytes_value=new_token_bytes, rep_factor=node.nxt.rep_factor)
                 if new_token_bytes not in bytes_nodes:
                     bytes_nodes[new_token_bytes] = set([])
                 bytes_nodes[new_token_bytes].add(new_node)
+                assert(new_node is not None)
 
                 # add its prev link
                 new_node.prev = node.prev
@@ -155,9 +159,10 @@ def smart_step(
 
                 # on to the next node worth considering
                 node = new_node.nxt
-            if node.bytes_value == first_bytes:
+            if node is not None and node.bytes_value == first_bytes:
                 bytes_nodes[first_bytes].remove(node)
                 new_first_bytes_set.add(node)
+                assert(node is not None)
         bytes_nodes[first_bytes] = new_first_bytes_set
 
     # delete the removed nodes
@@ -225,3 +230,5 @@ def get_tokens_and_merges(
             best_pair_heap=best_pair_heap,
             merges=merges
         )
+
+    return (current_tokens, merges)
