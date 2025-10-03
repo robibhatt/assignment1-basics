@@ -119,54 +119,55 @@ class BpeMerger:
         executes the merge throwing an error if it does not 
         recognize the bytes that are given to merge
         """
+
+        # sometimes no merge is recommended, so just do nothing
         if merge_pair is None:
             return
-        (first_bytes, second_bytes) = merge_pair
+        
+        # extract words
+        (word_0, word_1) = merge_pair
 
         # create the new vocab word
-        new_token_bytes = first_bytes + second_bytes
-        self.vocab.append(new_token_bytes)
+        new_word = word_0 + word_1
 
-        # record the merge
-        self.merges.append((first_bytes, second_bytes))
+        # update selfs attributes accordingly
+        self.vocab.append(new_word)
+        self.word_nodes[new_word] = set([])
+        self.merges.append((word_0, word_1))
 
         # prepare a set of nodes that need to be deleted
         del_set = set([])
 
-        if first_bytes != second_bytes:
+        if word_0 != word_1:
             # modify all of the linked lists
-            for first_bytes_node in self.word_nodes[first_bytes]:
-                succ = first_bytes_node.nxt
-                if succ is not None and succ.bytes_value == second_bytes:
-                    new_node = BytesNode(bytes_value=new_token_bytes, rep_factor=first_bytes_node.rep_factor)
-                    if new_token_bytes not in self.word_nodes:
-                        self.word_nodes[new_token_bytes] = set([])
-                    self.word_nodes[new_token_bytes].add(new_node)
+            for node_0 in self.word_nodes[word_0]:
+                succ = node_0.nxt
+                if succ is not None and succ.bytes_value == word_1:
+                    new_node = BytesNode(bytes_value=new_word, rep_factor=node_0.rep_factor)
+                    self.word_nodes[new_word].add(new_node)
                     new_node.nxt = succ.nxt
                     if succ.nxt is not None:
                         succ.nxt.prev = new_node
-                    new_node.prev = first_bytes_node.prev
+                    new_node.prev = node_0.prev
                     new_node.prev.nxt = new_node
 
-                    del_set.add(first_bytes_node)
+                    del_set.add(node_0)
                     del_set.add(succ)
 
             for node in del_set:
                 self.word_nodes[node.bytes_value].remove(node)
 
         else:
-            new_first_bytes_set = set([])
-            while len(self.word_nodes[first_bytes]) > 0:
-                node = next(iter(self.word_nodes[first_bytes]))
+            new_set_0 = set([])
+            while len(self.word_nodes[word_0]) > 0:
+                node = next(iter(self.word_nodes[word_0]))
                 while node.prev.bytes_value == node.bytes_value:
                     node = node.prev
-                while (node is not None) and (node.nxt is not None) and (node.bytes_value == first_bytes) and (node.nxt.bytes_value == first_bytes):
+                while (node is not None) and (node.nxt is not None) and (node.bytes_value == word_0) and (node.nxt.bytes_value == word_0):
 
                     # create the new node
-                    new_node = BytesNode(bytes_value=new_token_bytes, rep_factor=node.nxt.rep_factor)
-                    if new_token_bytes not in self.word_nodes:
-                        self.word_nodes[new_token_bytes] = set([])
-                    self.word_nodes[new_token_bytes].add(new_node)
+                    new_node = BytesNode(bytes_value=new_word, rep_factor=node.nxt.rep_factor)
+                    self.word_nodes[new_word].add(new_node)
                     assert(new_node is not None)
 
                     # add its prev link
@@ -179,17 +180,17 @@ class BpeMerger:
                         node.nxt.nxt.prev = new_node
 
                     # remove the node and its successor from our set of nodes to check
-                    self.word_nodes[first_bytes].remove(node)
-                    self.word_nodes[first_bytes].remove(node.nxt)
+                    self.word_nodes[word_0].remove(node)
+                    self.word_nodes[word_0].remove(node.nxt)
                     del_set.add(node)
                     del_set.add(node.nxt)
 
                     # on to the next node worth considering
                     node = new_node.nxt
-                if node is not None and node.bytes_value == first_bytes:
-                    self.word_nodes[first_bytes].remove(node)
-                    new_first_bytes_set.add(node)
-            self.word_nodes[first_bytes] = new_first_bytes_set
+                if node is not None and node.bytes_value == word_0:
+                    self.word_nodes[word_0].remove(node)
+                    new_set_0.add(node)
+            self.word_nodes[word_0] = new_set_0
 
         # delete the removed nodes
         del_set.clear()
@@ -204,7 +205,7 @@ class BpeMerger:
             # counter for storing counts of changed pairs
             pair_counter_delta = Counter()
 
-            for bytes_value in [first_bytes, second_bytes, new_token_bytes]:
+            for bytes_value in [word_0, word_1, new_word]:
                 for node in self.word_nodes[bytes_value]:
                     prev_node = node.prev
                     nxt_node = node.nxt
@@ -217,7 +218,7 @@ class BpeMerger:
                             pair_counter_delta[(node.bytes_value,nxt_node.bytes_value)] += node.rep_factor
                             touched_nodes.add(node)
 
-            for bytes_value in [first_bytes, second_bytes, new_token_bytes]:
+            for bytes_value in [word_0, word_1, new_word]:
                 for current_token in self.vocab:
                     pair_counter_delta[(bytes_value, current_token)] += 0
                     pair_counter_delta[(current_token, bytes_value)] += 0
