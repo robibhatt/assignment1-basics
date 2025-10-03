@@ -2,7 +2,7 @@ from cs336_basics.pretokenizer import pretokenize_file_parallel
 from cs336_basics.merger import get_tokens_and_merges_real
 from pathlib import Path
 import pickle
-
+import argparse
 
 def train_bpe(
     input_path:str,
@@ -49,7 +49,7 @@ def train_bpe(
 
         # dump the info
         with open(vocab_path, "wb") as vf:
-            pickle.dump(vocab, vf)
+            pickle.dump((vocab, special_tokens), vf)
 
         with open(merges_path, "wb") as mf:
             pickle.dump(merges, mf)
@@ -57,8 +57,13 @@ def train_bpe(
     return (vocab, merges)
 
 
-if __name__ == "__main__":
-    filename = "data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-valid.txt"
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("path", type=Path, help="Path to file or directory")
+    args = parser.parse_args()
+
+    assert(args.path.exists())
+    filename = str(args.path)
     special_tokens = ["<|endoftext|>"]
     vocab, merges = train_bpe(
         input_path=filename,
@@ -66,4 +71,9 @@ if __name__ == "__main__":
         special_tokens=special_tokens,
         serialize=True
     )
-    print('it ran i guess')
+
+    print('trained bpe_tokenizer on ', filename)
+
+
+if __name__ == "__main__":
+    main()
