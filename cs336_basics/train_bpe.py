@@ -4,6 +4,8 @@ from pathlib import Path
 import pickle
 import argparse
 
+NUM_WORKERS = 7
+
 def train_bpe(
     input_path:str,
     vocab_size:int,
@@ -16,7 +18,7 @@ def train_bpe(
         filename=input_path,
         special_tokens=special_tokens,
         chunk_size=64000,
-        num_workers=5
+        num_workers=NUM_WORKERS
     )
 
     # always have to include the bytes and the special tokens as a default
