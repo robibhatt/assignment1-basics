@@ -50,7 +50,7 @@ def train_bpe(
         vocab_path = parent_dir / (filename + '_vocab.pkl')
         merges_path = parent_dir / (filename + '_merges.pkl')
 
-        # dump the info
+        # dump the vocab along with the special tokens list
         with open(vocab_path, "wb") as vf:
             pickle.dump((vocab, special_tokens), vf)
 
@@ -60,17 +60,21 @@ def train_bpe(
     return (vocab, merges)
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("path", type=Path, help="Path to file or directory")
-    args = parser.parse_args()
+def parse_args():
+    p = argparse.ArgumentParser(description="bpe training parameters")
+    p.add_argument("--input_file", type=Path, required=True, help="Input file or dir")
+    p.add_argument("--vocab_size", type=int, required=True, help="Vocab size")
+    return p.parse_args()
 
-    assert(args.path.exists())
-    filename = str(args.path)
+
+def main():
+    args = parse_args()
+    filename = str(args.input_file)
+    vocab_size = args.vocab_size
     special_tokens = ["<|endoftext|>"]
     vocab, merges = train_bpe(
         input_path=filename,
-        vocab_size=500,
+        vocab_size=vocab_size,
         special_tokens=special_tokens,
         serialize=True
     )

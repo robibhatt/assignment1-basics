@@ -13,4 +13,4 @@ scontrol show job $SLURM_JOB_ID
 pwd
 nvidia-smi # only if you requested gpus
 
-uv run cs336_basics/train_bpe.py data/owt/owt_train.txt
+uv run cs336_basics/train_bpe.py --input_file data/owt/owt_train.txt --vocab_size 32000
