@@ -64,6 +64,7 @@ def parse_args():
     p = argparse.ArgumentParser(description="bpe training parameters")
     p.add_argument("--input_file", type=Path, required=True, help="Input file or dir")
     p.add_argument("--vocab_size", type=int, required=True, help="Vocab size")
+    p.add_argument("--profile", type=bool, required=True, help="Do you want profiling?")
     return p.parse_args()
 
 
@@ -72,12 +73,25 @@ def main():
     filename = str(args.input_file)
     vocab_size = args.vocab_size
     special_tokens = ["<|endoftext|>"]
-    vocab, merges = train_bpe(
-        input_path=filename,
-        vocab_size=vocab_size,
-        special_tokens=special_tokens,
-        serialize=True
-    )
+    profile = args.profile
+    if not profile:
+        vocab, merges = train_bpe(
+            input_path=filename,
+            vocab_size=vocab_size,
+            special_tokens=special_tokens,
+            serialize=True
+        )
+    else:
+        with cProfile.Profile() as pr:
+            vocab, merges = train_bpe(
+                input_path=filename,
+                vocab_size=vocab_size,
+                special_tokens=special_tokens,
+                serialize=True
+            )
+        stats = pstats.Stats(pr)
+        stats.strip_dirs()
+        stats.sort_stats("cumulative").print_stats(20)
 
     print('trained bpe_tokenizer on ', filename)
 
