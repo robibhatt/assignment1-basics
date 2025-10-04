@@ -3,6 +3,7 @@ from cs336_basics.merger import get_tokens_and_merges_real
 from pathlib import Path
 import pickle
 import argparse
+import cProfile, pstats
 
 NUM_WORKERS = 7
 
