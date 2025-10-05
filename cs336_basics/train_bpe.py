@@ -1,4 +1,4 @@
-from cs336_basics.pretokenizer_class import pretokenize_file_parallel
+from cs336_basics.pretokenizer import pretokenize_file_parallel
 from cs336_basics.merger import get_tokens_and_merges_real
 from pathlib import Path
 import pickle

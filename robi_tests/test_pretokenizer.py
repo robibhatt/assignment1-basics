@@ -1,23 +1,7 @@
-from cs336_basics.pretokenizer import PAT, pretokenize_section, pretokenize_chunk, find_chunk_boundaries, pretokenize_file_parallel
-from cs336_basics.utils import print_counter, compare_counters
-import regex as re
 from collections import Counter
 from typing import BinaryIO, List
-
-
-
-def test_pretokenize_section():
-    special_tokens = ['<|endoftext|>']
-    max_length = max([len(special_token.encode('utf-8')) for special_token in special_tokens])
-    special_token_pattern = '|'.join([re.escape(spec) for spec in special_tokens])
-    with open('data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-valid.txt', 'rb') as f:
-        start = 1354
-        end = 34536
-        chunk_size = 400
-        first_count = pretokenize_section_slow(f, start, end, special_token_pattern)
-        second_count = pretokenize_section(f, start, end, special_token_pattern, max_length, chunk_size)
-
-    assert(first_count == second_count)
+import regex as re
+from cs336_basics.pretokenizer import PAT, pretokenize_section, find_chunk_boundaries, pretokenize_file_parallel
 
 
 def pretokenize_section_slow(
@@ -39,12 +23,21 @@ def pretokenize_section_slow(
     return count
 
 
-def test_pretokenize_file():
-    filename = "data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-valid.txt"
-    special_tokens = ["<|endoftext|>"]
-    first_count = pretokenize_file(filename, special_tokens, 1024)
-    second_count = pretokenize_file(filename, special_tokens, 24123)
-    #compare_counters(first_count, second_count)
+def test_pretokenize_section():
+    special_tokens = ['<|endoftext|>']
+    #max_length = max([len(special_token.encode('utf-8')) for special_token in special_tokens])
+    special_token_pattern = '|'.join([re.escape(spec) for spec in special_tokens])
+    with open('data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-valid.txt', 'rb') as f:
+        start = 1354
+        end = 34536
+        chunk_size = 400
+        first_count = pretokenize_section_slow(f, start, end, special_token_pattern)
+        second_count = pretokenize_section(f=f,
+                                           start=start,
+                                           end=end,
+                                           special_tokens=special_tokens,
+                                           chunk_size=chunk_size)
+
     assert(first_count == second_count)
 
 
@@ -67,7 +60,11 @@ def pretokenize_file(
             # f.seek(start)
             # chunk = f.read(end - start).decode("utf-8", errors="ignore")
             # Run pre-tokenization on your chunk and store the counts for each pre-token
-            new_count = pretokenize_section(f, start, end, special_token_pattern, max_special_length, chunk_size)
+            new_count = pretokenize_section(f=f,
+                                            start=start,
+                                            end=end, 
+                                            special_tokens=special_tokens,
+                                            chunk_size=chunk_size)
             count.update(new_count)
     return count
 
@@ -77,5 +74,4 @@ def test_pretokenize_parllel():
     special_tokens = ["<|endoftext|>"]
     first_count = pretokenize_file(filename, special_tokens, 1024)
     second_count = pretokenize_file_parallel(filename, special_tokens, 1024, 4)
-    #compare_counters(first_count, second_count)
     assert(first_count == second_count)
