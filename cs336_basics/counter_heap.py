@@ -65,3 +65,12 @@ class CounterHeap:
                 self.pair_counter[pair] = new_count
                 heap_format = get_heap_format(pair_count=new_count, pair=pair)
                 heapq.heappush(self.max_heap, heap_format)
+
+    def update_counts(self, counts_delta: Counter[tuple[bytes, bytes]]):
+        for pair in counts_delta:
+            delta = counts_delta[pair]
+            if delta != 0:
+                new_count = self.pair_counter[pair] + delta
+                self.pair_counter[pair] = new_count
+                heap_format = get_heap_format(pair_count=new_count, pair=pair)
+                heapq.heappush(self.max_heap, heap_format)

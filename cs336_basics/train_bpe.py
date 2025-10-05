@@ -1,5 +1,6 @@
 from cs336_basics.pretokenizer import pretokenize_file_parallel
 from cs336_basics.merger import get_tokens_and_merges_real
+from cs336_basics.quick_merger import quick_get_tokens_and_merges_real
 from pathlib import Path
 import pickle
 import argparse
@@ -26,7 +27,7 @@ def train_bpe(
     number_of_merges = vocab_size - len(special_tokens) - 256
 
     # time to get a bytes list of our tokens along with our merges
-    final_tokens, merges = get_tokens_and_merges_real(
+    final_tokens, merges = quick_get_tokens_and_merges_real(
         pretokenized_counts=string_counter,
         number_of_merges=number_of_merges
     )
