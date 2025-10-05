@@ -1,73 +1,101 @@
-import regex as re
-import os
 from collections import Counter
-from typing import BinaryIO, List, Tuple
-from cs336_basics.utils import print_counter, compare_counters
-import cProfile, pstats
+import regex as re
+from typing import BinaryIO
 from multiprocessing import Pool
+import os
 
 
 PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+EMPTY_BYTES = ''.encode('utf-8')
 
 
-def pretokenize_chunk(
-    f: BinaryIO,
-    start:int,
-    end:int,
-    special_token_pattern:str,
-    max_special_length:int,
-    count: Counter[str]
-) -> tuple[str, int]:
-    """
-    updates a counter with pretokenized string counts
-    is careful to handle special_strings which straddle the boundary line
-    """
-    f.seek(start)
-    text = f.read(end - start).decode("utf-8", errors="ignore")
-    real_end = start + len(text.encode('utf-8'))
-    text_chunks = re.split(special_token_pattern, text)
-    for chunk in text_chunks[:-1]:
-        for match in re.finditer(PAT, chunk):
-            count[match.group(0)] += 1
-    last_end = 0
-    text_chunk = text_chunks[-1]
-    chunk_length = len(text_chunk)
-    for match in re.finditer(PAT, text_chunk):
-        if chunk_length - match.end() >= max_special_length:
-            count[match.group(0)] += 1
-            last_end = match.end()
-    new_start = real_end - len(text_chunk[last_end:chunk_length].encode('utf-8'))
-    if start == new_start:
-        assert(len(text_chunks) == 1)
-        assert(last_end == 0)
-        for match in re.finditer(PAT, text_chunk):
-            count[match.group(0)] += 1
-            last_end = match.end()
-    return real_end - len(text_chunk[last_end:chunk_length].encode('utf-8'))
+class Pretokenizer:
 
+    def __init__(self, special_tokens:list[str]):
+        self.special_tokens = special_tokens
+        self.pretoken_counter = Counter()
+        self.prefix = EMPTY_BYTES
+        self.max_special_length = max(len(s) for s in special_tokens)
+        self.special_token_pattern = "|".join([re.escape(spec) for spec in special_tokens])
+
+    def process_bytes(self, input_data:bytes):
+        """
+        Full update of the counter when given input data.
+        Should be used sequentially on chunks of bytes that are consecutive.
+        Will assume we pick up where we left off. 
+        """
+        input_string = self.add_bytes(input_data=input_data)
+        self.pretokenize_str(input_string=input_string)
+
+    def add_bytes(self, input_data:bytes)->str:
+        """
+        returns the decoded string from the bytes.
+        sets the undecodable part to our prefix
+        """
+
+        # decode the string after including our prefix
+        input_string = (self.prefix + input_data).decode('utf-8', errors='surrogateescape')
+
+        # reset the prefix
+        self.prefix = EMPTY_BYTES
+
+        # get the last bytes that didn't decode properly
+        last_index = len(input_string)-1
+        last_char_bytes_int = ord(input_string[last_index])
+        while last_index >= 0 and (0xDC80 <= last_char_bytes_int <= 0xDCFF):
+            self.prefix = bytes([last_char_bytes_int - 0xDC00]) + self.prefix
+            last_index -= 1
+            last_char_bytes_int = ord(input_string[last_index])
+        return input_string[:last_index+1]
+    
+    def pretokenize_str(self, input_string:str):
+        """
+        update our pretoken counter based on the string
+        """
+        pretoken_chunks = re.split(self.special_token_pattern, input_string)
+        for chunk in pretoken_chunks[:-1]:
+            for pretoken in re.findall(PAT, chunk):
+                self.pretoken_counter[pretoken] += 1
+
+        last_chunk = pretoken_chunks[-1]
+        remainder = len(last_chunk)
+        for match in re.finditer(PAT, last_chunk):
+            pretoken = match.group(0)
+            remainder -= len(pretoken)
+            if remainder >= self.max_special_length:
+                self.pretoken_counter[pretoken] += 1
+            else:
+                remainder += len(pretoken)
+                break
+        self.prefix = last_chunk[-remainder:].encode('utf-8') + self.prefix
+
+    def process_prefix(self):
+        prefix_string = self.prefix.decode('utf-8',errors="ignore")
+        for pretoken in re.findall(PAT, prefix_string):
+            self.pretoken_counter[pretoken] += 1
+        self.prefix = EMPTY_BYTES
+        
 
 def pretokenize_section(
     f: BinaryIO,
     start:int,
     end:int,
-    special_token_pattern:str,
-    max_special_length: int,
+    special_tokens: list[str],
     chunk_size:int,
 ) -> Counter[str]:
     """
     SormehSamin
     """
-    count = Counter()
-    current_start = start
-    current_end = min(end, start + chunk_size)
-    while True:
-        next_start = pretokenize_chunk(f, current_start, current_end, special_token_pattern, max_special_length, count)
-        if current_start == next_start:
-            break
-        else:
-            current_start = next_start
-            current_end = min(end, current_start + chunk_size)
-    return count
+
+    pretokenizer = Pretokenizer(special_tokens=special_tokens)
+    while start < end:
+        next_start = min(end, start+chunk_size)
+        f.seek(start)
+        data = f.read(next_start-start)
+        pretokenizer.process_bytes(data)
+        start = next_start
+    pretokenizer.process_prefix()
+    return pretokenizer.pretoken_counter
 
 
 def find_chunk_boundaries(
@@ -117,32 +145,31 @@ def find_chunk_boundaries(
     return sorted(set(chunk_boundaries))
 
 
-def _process_chunk(args: Tuple[str, int, int, str, int, int]) -> Counter[str]:
+def _process_chunk(args: tuple[str, int, int, list[str], int]) -> Counter[str]:
     """Worker function: pretokenize one byte range of the file."""
     (
         filename,
         start,
         end,
-        special_token_pattern,
-        max_special_length,
+        special_tokens,
         chunk_size,
     ) = args
 
     with open(filename, "rb") as f:
         return pretokenize_section(
-            f, start, end, special_token_pattern, max_special_length, chunk_size
+            f, start, end, special_tokens, chunk_size
         )
         
 
 def pretokenize_file_parallel(
     filename: str,
-    special_tokens: List[str],
+    special_tokens: list[str],
     chunk_size: int,
     num_workers: 4
 ) -> Counter[str]:
-    count = Counter()
-    max_special_length = max(len(s.encode("utf-8")) for s in special_tokens)
-    special_token_pattern = "|".join([re.escape(spec) for spec in special_tokens])
+
+    # counts pretokens over a large file
+    output_counter = Counter()
 
     with open(filename, "rb") as f:
         num_processes = num_workers
@@ -154,8 +181,7 @@ def pretokenize_file_parallel(
             filename,
             start,
             end,
-            special_token_pattern,
-            max_special_length,
+            special_tokens,
             chunk_size,
         )
         for start, end in zip(boundaries[:-1], boundaries[1:])
@@ -167,13 +193,5 @@ def pretokenize_file_parallel(
 
     # Merge all Counters
     for c in results:
-        count.update(c)
-    return count
-
-
-if __name__ == "__main__":
-    filename = "data/TinyStoriesV2-GPT4-valid.txt"
-    special_tokens = ["<|endoftext|>"]
-    chunk_size = 64000
-    result = pretokenize_file_parallel(filename, special_tokens, True, chunk_size, 4)
-    print(len(result))
+        output_counter.update(c)
+    return output_counter
