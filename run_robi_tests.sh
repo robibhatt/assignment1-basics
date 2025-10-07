@@ -14,4 +14,5 @@ pwd
 nvidia-smi # only if you requested gpus
 
 uv run pytest robi_tests/
-uv run pytest tests/test_train_bpe.py 
+uv run pytest tests/test_train_bpe.py
+uv run pytest tests/test_tokenizer.py
