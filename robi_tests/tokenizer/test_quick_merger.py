@@ -1,5 +1,5 @@
-from cs336_basics.merger import BpeMerger
-from cs336_basics.quick_merger import QuickMerger
+from cs336_basics.tokenizer.merger import BpeMerger
+from cs336_basics.tokenizer.quick_merger import QuickMerger
 from collections import Counter
 from cs336_basics.utils import random_string
 import random

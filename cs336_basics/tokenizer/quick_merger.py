@@ -1,5 +1,5 @@
 from collections import Counter
-from cs336_basics.counter_heap import CounterHeap
+from cs336_basics.tokenizer.counter_heap import CounterHeap
 from dataclasses import dataclass
 
 

@@ -1,6 +1,6 @@
-from cs336_basics.pretokenizer import pretokenize_file_parallel
-from cs336_basics.merger import get_tokens_and_merges_real
-from cs336_basics.quick_merger import quick_get_tokens_and_merges_real
+from cs336_basics.tokenizer.pretokenizer import pretokenize_file_parallel
+from cs336_basics.tokenizer.merger import get_tokens_and_merges_real
+from cs336_basics.tokenizer.quick_merger import quick_get_tokens_and_merges_real
 from pathlib import Path
 import pickle
 import argparse

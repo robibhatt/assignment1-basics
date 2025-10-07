@@ -1,8 +1,8 @@
 from collections import Counter
 from cs336_basics.utils import random_string
 import random
-from cs336_basics.counter_heap import CounterHeap
-from cs336_basics.merger import BpeMerger, BytesNode
+from cs336_basics.tokenizer.counter_heap import CounterHeap
+from cs336_basics.tokenizer.merger import BpeMerger, BytesNode
 
 
 def initialize_pair_counter(pretoken_nodes:dict[str, BytesNode])->Counter[tuple[bytes, bytes]]:

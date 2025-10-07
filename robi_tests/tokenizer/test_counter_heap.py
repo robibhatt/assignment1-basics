@@ -1,4 +1,4 @@
-from cs336_basics.counter_heap import get_heap_format, get_count_and_pair, create_max_heap
+from cs336_basics.tokenizer.counter_heap import get_heap_format, get_count_and_pair, create_max_heap
 from cs336_basics.utils import random_string
 import random
 

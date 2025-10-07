@@ -1,4 +1,4 @@
-from cs336_basics.tokenizer import Tokenizer
+from cs336_basics.tokenizer.tokenizer import Tokenizer
 import cProfile, pstats
 
 

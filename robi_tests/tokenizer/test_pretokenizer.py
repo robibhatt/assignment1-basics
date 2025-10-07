@@ -1,7 +1,7 @@
 from collections import Counter
 from typing import BinaryIO, List
 import regex as re
-from cs336_basics.pretokenizer import PAT, pretokenize_section, find_chunk_boundaries, pretokenize_file_parallel
+from cs336_basics.tokenizer.pretokenizer import PAT, pretokenize_section, find_chunk_boundaries, pretokenize_file_parallel
 
 
 def pretokenize_section_slow(
