@@ -6,7 +6,7 @@ import pickle
 import argparse
 import cProfile, pstats
 
-NUM_WORKERS = 7
+NUM_WORKERS = 5
 
 def train_bpe(
     input_path:str,
@@ -65,7 +65,7 @@ def parse_args():
     p = argparse.ArgumentParser(description="bpe training parameters")
     p.add_argument("--input_file", type=Path, required=True, help="Input file or dir")
     p.add_argument("--vocab_size", type=int, required=True, help="Vocab size")
-    p.add_argument("--profile", type=bool, required=True, help="Do you want profiling?")
+    p.add_argument("--profile", action="store_true", help="Enable profiling")
     return p.parse_args()
 
 
