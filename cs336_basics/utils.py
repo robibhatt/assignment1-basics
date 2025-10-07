@@ -1,4 +1,6 @@
 from collections import Counter
+from collections.abc import Iterable
+import regex as re
 import random
 import string
 
@@ -43,3 +45,15 @@ def compare_counters(counter_1: Counter[str], counter_2: Counter[str]):
         else:
             assert(False)
     print(counter_1 == counter_2)
+
+
+def create_special_token_string(special_tokens:Iterable[str],
+                                include_specials:bool)->str:
+    special_token_strings = sorted([re.escape(spec) for spec in special_tokens], 
+                                       key=len, 
+                                       reverse=True)
+    
+    if include_specials:
+        return '(' + "|".join(special_token_strings) + ')'
+    else:
+        return "|".join(special_token_strings)

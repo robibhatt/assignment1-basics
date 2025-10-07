@@ -2,6 +2,7 @@ from collections import Counter
 import regex as re
 from typing import BinaryIO
 from multiprocessing import Pool
+from cs336_basics.utils import create_special_token_string
 import os
 
 
@@ -17,6 +18,8 @@ class Pretokenizer:
         self.prefix = EMPTY_BYTES
         self.max_special_length = max(len(s) for s in special_tokens)
         self.special_token_pattern = "|".join([re.escape(spec) for spec in special_tokens])
+        self.special_token_pattern = create_special_token_string(special_tokens=special_tokens,
+                                                                 include_specials=False)
 
     def process_bytes(self, input_data:bytes):
         """
