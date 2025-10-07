@@ -13,4 +13,4 @@ scontrol show job $SLURM_JOB_ID
 pwd
 nvidia-smi # only if you requested gpus
 
-uv run cs336_basics/train_bpe.py --input_file data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-train.txt --vocab_size 10000 --profile True
+uv run cs336_basics/train_bpe.py --input_file data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-train.txt --vocab_size 10000 --profile
