@@ -1,6 +1,7 @@
 import regex as re
 import pickle
 from collections import deque
+import heapq
 from collections.abc import Iterator, Iterable
 from cs336_basics.utils import create_special_token_string
 
@@ -20,8 +21,13 @@ class Tokenizer:
         # maps vocab words to ids
         self.vocab_id = {}
 
-        # ordered list of merges to make
-        self.merges = [merge for merge in merges]
+        # store the merges
+        self.merges = []
+        # store the ids to easily look up when a merge occurred
+        self.merge_ids = {}
+        for id, merge in enumerate(merges):
+            self.merges.append(merge)
+            self.merge_ids[merge] = id
 
         # number of vocab words that are not special
         normal_vocab_length = 256 + len(merges)
@@ -100,8 +106,31 @@ class Tokenizer:
     
     def encode_pretoken(self, pretoken:str)->list[int]:
         if pretoken not in self.pretoken_encodings:
-            bytes_list = [bytes([b]) for b in pretoken.encode('utf-8')]
-            for merge in self.merges:
+            self.pretoken_encodings[pretoken] = self.get_encoding(pretoken=pretoken)
+        return self.pretoken_encodings[pretoken]
+        
+
+    def get_encoding(self, pretoken:str)->list[int]:
+
+        # convert our pretoken into an initial list of bytes
+        bytes_list = [bytes([b]) for b in pretoken.encode('utf-8')]
+
+        while True:
+            best_merge_id = len(self.merges)
+
+            # search through all possible to merges and see if any appear
+            for potential_merge in zip(bytes_list, bytes_list[1:]):
+                best_merge_id = min(best_merge_id, self.merge_ids.get(potential_merge, best_merge_id))
+
+
+            # get the best merge
+            try:
+                merge = self.merges[best_merge_id]
+            except IndexError:
+                # if there are no merges, we are done
+                break
+            else:
+                # make the actual merge
                 new_bytes_list = []
                 new_word = merge[0] + merge[1]
                 prev_pair_was_merge = False
@@ -117,8 +146,8 @@ class Tokenizer:
                 if not prev_pair_was_merge:
                     new_bytes_list.append(bytes_list[-1])
                 bytes_list = new_bytes_list
-            self.pretoken_encodings[pretoken] = [self.vocab_id[bytes] for bytes in bytes_list]
-        return self.pretoken_encodings[pretoken]
+
+        return [self.vocab_id[bytes] for bytes in bytes_list]
     
     def encode(self, text:str)->list[int]:
         """
@@ -165,47 +194,47 @@ class EncodingIterator:
         return self
     
     def process_prefix(self, fully:bool):
-            # divide up the self.prefix + next_string based on special tokens
-            chunks = re.split(self.tokenizer.special_token_pattern, self.prefix_string)
+        # divide up the self.prefix + next_string based on special tokens
+        chunks = re.split(self.tokenizer.special_token_pattern, self.prefix_string)
 
-            stop_index = len(chunks) - 1
-            if fully:
-                stop_index += 1
+        stop_index = len(chunks) - 1
+        if fully:
+            stop_index += 1
 
-            # process every chunk except the last one which might get added to the prefix
-            for i, chunk in enumerate(chunks[:stop_index]):
-                if i % 2 == 0:
-                    # these are non-special chunks and get encoded with the tokenizer
-                    pretokens = re.findall(PAT, chunk)
-                    for pretoken in pretokens:
-                        # we always just build on our backlog
-                        self.backlog.extend(self.tokenizer.encode_pretoken(pretoken=pretoken))
+        # process every chunk except the last one which might get added to the prefix
+        for i, chunk in enumerate(chunks[:stop_index]):
+            if i % 2 == 0:
+                # these are non-special chunks and get encoded with the tokenizer
+                pretokens = re.findall(PAT, chunk)
+                for pretoken in pretokens:
+                    # we always just build on our backlog
+                    self.backlog.extend(self.tokenizer.encode_pretoken(pretoken=pretoken))
+            else:
+                # these are special chunks, and get easily encoded with the tokenizer
+                special_word = chunk.encode('utf-8')
+                # update our backlog
+                self.backlog.append(self.tokenizer.vocab_id[special_word])
+
+        # reset the prefix
+        self.prefix_string = ''
+        
+        if not fully:
+            # now we deal with the last chunk
+            last_chunk = chunks[-1]
+
+            # we make sure to process every bit of the last chunk that we possbily can
+            remainder = len(last_chunk)
+            for match in re.finditer(PAT, last_chunk):
+                pretoken = match.group(0)
+                remainder -= len(pretoken)
+                if remainder >= self.tokenizer.max_special_token_length:
+                    self.backlog.extend(self.tokenizer.encode_pretoken(pretoken=pretoken))
                 else:
-                    # these are special chunks, and get easily encoded with the tokenizer
-                    special_word = chunk.encode('utf-8')
-                    # update our backlog
-                    self.backlog.append(self.tokenizer.vocab_id[special_word])
-
-            # reset the prefix
-            self.prefix_string = ''
+                    remainder += len(pretoken)
+                    break
             
-            if not fully:
-                # now we deal with the last chunk
-                last_chunk = chunks[-1]
-
-                # we make sure to process every bit of the last chunk that we possbily can
-                remainder = len(last_chunk)
-                for match in re.finditer(PAT, last_chunk):
-                    pretoken = match.group(0)
-                    remainder -= len(pretoken)
-                    if remainder >= self.tokenizer.max_special_token_length:
-                        self.backlog.extend(self.tokenizer.encode_pretoken(pretoken=pretoken))
-                    else:
-                        remainder += len(pretoken)
-                        break
-                
-                # set the remainder to the prefix
-                self.prefix_string = last_chunk[-remainder:]
+            # set the remainder to the prefix
+            self.prefix_string = last_chunk[-remainder:]
 
     def __next__(self):
 
