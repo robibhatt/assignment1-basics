@@ -10,4 +10,4 @@ def test_linear():
     x = torch.randn(5, 3,
                     dtype=torch.float16,
                     device='cpu')
-    print(my_module(x))
+    my_module(x)

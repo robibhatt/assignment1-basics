@@ -19,7 +19,7 @@ class Linear(nn.Module):
         sigma = (2. / (in_features + out_features)) ** (0.5)
 
         # create an initiailize the weights
-        self.W = torch.empty(out_features, in_features, dtype=dtype, device=device)
+        self.W = nn.Parameter(torch.empty(out_features, in_features, dtype=dtype, device=device))
         nn.init.trunc_normal_(
             self.W,
             mean=0.0,
@@ -30,6 +30,14 @@ class Linear(nn.Module):
 
     def forward(self, x: Float[Tensor, "... d_in"]) -> Float[Tensor, "... d_out"]:
         return einops.einsum(self.W, x, "... d_out d_in, ... d_in -> ... d_out")
+    
+    def set_weights(self, weights: Float[Tensor, "d_out d_in"])->None:
+        """
+        Copies weights
+        """
+        assert(weights.dtype == self.W.dtype)
+        with torch.no_grad():
+            self.W.copy_(weights)
 
 
 
