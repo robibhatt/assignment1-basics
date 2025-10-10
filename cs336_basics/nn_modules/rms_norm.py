@@ -18,22 +18,22 @@ class RMSNorm(nn.Module):
         self.eps=eps
 
         # create an initiailize the gains
-        self.gains = nn.Parameter(torch.ones(d_model, device=device, dtype=dtype))
+        self.weight = nn.Parameter(torch.ones(d_model, device=device, dtype=dtype))
 
     def forward(self, x: Float[Tensor, "... d_model"]) -> Float[Tensor, "... d_model"]:
         x_dtype = x.dtype
         x = x.to(torch.float32)
         x_norm = torch.sqrt(torch.mean(x*x, dim=-1, keepdim=True) + self.eps)
-        result = self.gains * x / x_norm
+        result = self.weight * x / x_norm
         return result.to(dtype=x_dtype)
     
     def set_weights(self, weights: Float[Tensor, "d_model"])->None:
         """
         Copies weights
         """
-        assert(weights.dtype == self.gains.dtype)
+        assert(weights.dtype == self.weight.dtype)
         with torch.no_grad():
-            self.gains.copy_(weights)
+            self.weight.copy_(weights)
         
     
 

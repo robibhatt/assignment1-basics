@@ -17,9 +17,9 @@ class Embedding(nn.Module):
         
 
         # create an initiailize the weights
-        self.W = nn.Parameter(torch.empty(num_embeddings, embedding_dim, dtype=dtype, device=device))
+        self.weight = nn.Parameter(torch.empty(num_embeddings, embedding_dim, dtype=dtype, device=device))
         nn.init.trunc_normal_(
-            self.W,
+            self.weight,
             mean=0.0,
             std=1.,
             a=-3.,
@@ -27,15 +27,15 @@ class Embedding(nn.Module):
         )
 
     def forward(self, token_ids: Int[Tensor, "batch_size sequence_length"]) -> Float[Tensor, "batch_size sequence_length embedding_dim"]:
-        return self.W[token_ids, :]
+        return self.weight[token_ids, :]
     
     def set_weights(self, weights: Float[Tensor, "num_embeddings embedding_dim"])->None:
         """
         Copies weights
         """
-        assert(weights.dtype == self.W.dtype)
+        assert(weights.dtype == self.weight.dtype)
         with torch.no_grad():
-            self.W.copy_(weights)
+            self.weight.copy_(weights)
 
 
 

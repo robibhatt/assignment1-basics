@@ -16,6 +16,9 @@ from cs336_basics.nn_modules.rms_norm import RMSNorm
 from cs336_basics.nn_modules.swiglu import SwiGLU
 from cs336_basics.nn_modules.rope import RoPE
 from cs336_basics.nn_modules.useful_functions import softmax, scaled_dot_product_attention
+from cs336_basics.nn_modules.multihead_self_attention import MultiHeadSelfAttention
+from cs336_basics.nn_modules.transformer_block import TransformerBlock
+from cs336_basics.nn_modules.transformer_lm import TransformerLM
 
 
 def run_linear(
@@ -164,7 +167,15 @@ def run_multihead_self_attention(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    my_mod = MultiHeadSelfAttention(d_model=d_model,
+                                    num_heads=num_heads,
+                                    device=q_proj_weight.device,
+                                    dtype=q_proj_weight.dtype)
+    my_mod.set_weights(q_proj_weight=q_proj_weight,
+                       k_proj_weight=k_proj_weight,
+                       v_proj_weight=v_proj_weight,
+                       o_proj_weight=o_proj_weight)
+    return my_mod(in_features)
 
 
 def run_multihead_self_attention_with_rope(
@@ -204,7 +215,17 @@ def run_multihead_self_attention_with_rope(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    my_mod = MultiHeadSelfAttention(d_model=d_model,
+                                    num_heads=num_heads,
+                                    max_seq_len=max_seq_len,
+                                    theta=theta,
+                                    device=q_proj_weight.device,
+                                    dtype=q_proj_weight.dtype)
+    my_mod.set_weights(q_proj_weight=q_proj_weight,
+                       k_proj_weight=k_proj_weight,
+                       v_proj_weight=v_proj_weight,
+                       o_proj_weight=o_proj_weight)
+    return my_mod(in_features, token_positions=token_positions)
 
 
 def run_rope(
@@ -302,7 +323,13 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+    transformer_block = TransformerBlock(d_model=d_model,
+                                         num_heads=num_heads,
+                                         d_ff=d_ff,
+                                         max_seq_len=max_seq_len,
+                                         theta=theta)
+    transformer_block.load_state_dict(weights, strict="False")
+    return transformer_block(in_features)
 
 
 def run_transformer_lm(
@@ -384,7 +411,15 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    optimus_prime = TransformerLM(vocab_size=vocab_size,
+                                  context_length=context_length,
+                                  d_model=d_model,
+                                  num_layers=num_layers,
+                                  num_heads=num_heads,
+                                  d_ff=d_ff,
+                                  rope_theta=rope_theta)
+    optimus_prime.load_state_dict(weights, strict="False")
+    return optimus_prime(in_indices)
 
 
 def run_rmsnorm(
