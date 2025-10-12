@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Exit immediately if any command fails
+set -e
+
+# Optional: activate environment if needed
+# source venv/bin/activate
+
+# Run your Python/uv commands
+uv run pytest robi_tests/
+uv run pytest tests/test_train_bpe.py
+uv run pytest tests/test_tokenizer.py
+uv run pytest -k test_transformer_lm
+uv run pytest -k test_transformer_block
+uv run pytest -k test_multihead_self_attention
+uv run pytest -k test_scaled_dot_product_attention
+uv run pytest -k test_softmax_matches_pytorch
+uv run pytest -k test_rope
+uv run pytest -k test_swiglu
+uv run pytest -k test_rmsnorm
+uv run pytest -k test_embedding
+uv run pytest -k test_linear
+uv run pytest -k test_cross_entropy

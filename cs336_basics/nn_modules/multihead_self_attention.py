@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch import Tensor
 import einops
 from jaxtyping import Bool, Float, Int
-from cs336_basics.nn_modules.useful_functions import scaled_dot_product_attention
+from cs336_basics.torch_utils import scaled_dot_product_attention
 from cs336_basics.nn_modules.rope import RoPE
 from cs336_basics.nn_modules.linear import Linear
 

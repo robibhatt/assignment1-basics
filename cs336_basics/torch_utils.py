@@ -24,3 +24,13 @@ def scaled_dot_product_attention(
         qtk = torch.where(mask, qtk, -torch.inf)
 
     return einops.einsum(softmax(qtk, dim=-1), V, "... queries keys,  ... keys d_v -> ... queries d_v")
+
+
+def cross_entropy(
+    o: Float[Tensor, "... vocab_size"],
+    x: Int[Tensor, "..."]
+)-> Float[Tensor, ""]:
+    
+    o -= o.max(dim=-1, keepdim=True)[0]
+    output = torch.log(torch.exp(o).sum(dim=-1, keepdim=False)) - o.gather(dim=-1, index=x.unsqueeze(-1))
+    return output.mean()
