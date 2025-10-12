@@ -19,6 +19,8 @@ from cs336_basics.torch_utils import softmax, scaled_dot_product_attention, cros
 from cs336_basics.nn_modules.multihead_self_attention import MultiHeadSelfAttention
 from cs336_basics.nn_modules.transformer_block import TransformerBlock
 from cs336_basics.nn_modules.transformer_lm import TransformerLM
+from cs336_basics.optimizers.adamw import AdamW
+from cs336_basics.optimizers.optimizer_utils import lr_cosine_schedule, clip_gradients
 
 
 def run_linear(
@@ -531,14 +533,15 @@ def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm:
 
     The gradients of the parameters (parameter.grad) should be modified in-place.
     """
-    raise NotImplementedError
+    clip_gradients(parameters=parameters,
+                   max_norm=max_l2_norm)
 
 
 def get_adamw_cls() -> Any:
     """
     Returns a torch.optim.Optimizer that implements AdamW.
     """
-    raise NotImplementedError
+    return AdamW
 
 
 def run_get_lr_cosine_schedule(
@@ -566,7 +569,11 @@ def run_get_lr_cosine_schedule(
     Returns:
         Learning rate at the given iteration under the specified schedule.
     """
-    raise NotImplementedError
+    return lr_cosine_schedule(t=it,
+                              alpha_max=max_learning_rate,
+                              alpha_min=min_learning_rate,
+                              T_w=warmup_iters,
+                              T_c=cosine_cycle_iters)
 
 
 def run_save_checkpoint(
