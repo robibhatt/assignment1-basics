@@ -21,6 +21,8 @@ from cs336_basics.nn_modules.transformer_block import TransformerBlock
 from cs336_basics.nn_modules.transformer_lm import TransformerLM
 from cs336_basics.optimizers.adamw import AdamW
 from cs336_basics.optimizers.optimizer_utils import lr_cosine_schedule, clip_gradients
+from cs336_basics.data.data_loader import get_batch
+from cs336_basics.checkpoints.checkpoint import save_checkpoint, load_checkpoint
 
 
 def run_linear(
@@ -486,7 +488,10 @@ def run_get_batch(
         is the sampled input sequences, and the second tuple item is the corresponding
         language modeling labels.
     """
-    raise NotImplementedError
+    return get_batch(x = dataset,
+                     batch_size=batch_size,
+                     context_length=context_length,
+                     device=device)
 
 
 def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, " ..."]:
@@ -592,7 +597,10 @@ def run_save_checkpoint(
             we've completed.
         out (str | os.PathLike | BinaryIO | IO[bytes]): Path or file-like object to serialize the model, optimizer, and iteration to.
     """
-    raise NotImplementedError
+    save_checkpoint(model=model,
+                    optimizer=optimizer,
+                    iteration=iteration,
+                    out=out)
 
 
 def run_load_checkpoint(
@@ -613,7 +621,9 @@ def run_load_checkpoint(
     Returns:
         int: the previously-serialized number of iterations.
     """
-    raise NotImplementedError
+    return load_checkpoint(src=src,
+                           model=model,
+                           optimizer=optimizer)
 
 
 def get_tokenizer(
