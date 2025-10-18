@@ -1,9 +1,14 @@
-debug: true
+debug: false
+seed: 123
 production: false
 train_text_path: data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-valid.txt
 val_text_path: data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-valid.txt
+tokenizer_dir: data/TinyStoriesV2-GPT4/tokenizer
 num_workers: 5
 pretoken_chunk_size: 64000
 vocab_size: 1000
-special_tokens: ['cat', 'dog', 'rat', 'shark']
+special_tokens: []
 tokenizer_chunk_size: 64000
+batch_size: 32
+context_length: 256
+total_step_count: 100

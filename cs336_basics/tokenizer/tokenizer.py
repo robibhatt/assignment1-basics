@@ -13,7 +13,32 @@ class Tokenizer:
     def __init__(self,
                  vocab: dict[int, bytes],
                  merges: list[tuple[bytes, bytes]],
-                 special_tokens: list[str] | None = None):
+                 special_tokens: list[str] | None = None,
+                 vocab_size: int | None = None):
+        
+        # figure out the words that are merges
+        merge_words_set = set([])
+        for merge in merges:
+            merge_words_set.add(merge[0] + merge[1])
+
+        assert(len(merge_words_set) == len(merges))
+
+        # figure out the base and special words
+        base_words_set = set([])
+        special_words_set = set([])
+        for id in vocab:
+            if id < 256:
+                # by convention we always start with the base bytes
+                base_words_set.add(vocab[id])
+            else:
+                if vocab[id] not in merge_words_set:
+                    special_words_set.add(vocab[id])
+
+        # add in the new special words
+        if special_tokens is not None:
+            for special_word_str in special_tokens:
+                special_words_set.add(special_word_str.encode('utf-8'))
+
         
         # maps ids to vocab words
         self.id_vocab = {}
@@ -21,76 +46,83 @@ class Tokenizer:
         # maps vocab words to ids
         self.vocab_id = {}
 
-        # store the merges
+        # we first add the base words
+        for id in range(256):
+            self.id_vocab[id] = vocab[id]
+            self.vocab_id[vocab[id]] = id
+
+
+        next_id = 256
+        # quick sanity checks
+        assert(next_id == len(self.id_vocab))
+        assert(next_id == len(self.vocab_id))
+
+        
+        # store the merges we make
         self.merges = []
+
+        # we add precisely enough merges so that we hit at most the desired vocab_size
+        for merge in merges:
+            if vocab_size is not None and next_id >= vocab_size - len(special_words_set):
+                # we break out early if we have already gotten enough words
+                assert(next_id == vocab_size - len(special_words_set))
+                break
+            else:
+                # carefully check to ensure that this merge involves no special words
+                if merge[0] not in special_words_set:
+                    if merge[1] not in special_words_set:
+                        merge_word = merge[0] + merge[1]
+                        if merge_word not in special_words_set:
+                            self.merges.append(merge)
+                            self.id_vocab[next_id] = merge_word
+                            if merge_word in self.vocab_id:
+                                assert(False)
+                            self.vocab_id[merge_word] = next_id
+                            next_id += 1
+        
         # store the ids to easily look up when a merge occurred
         self.merge_ids = {}
-        for id, merge in enumerate(merges):
-            self.merges.append(merge)
+        for id, merge in enumerate(self.merges):
             self.merge_ids[merge] = id
 
-        # number of vocab words that are not special
-        normal_vocab_length = 256 + len(merges)
+        # add in the special tokens
+        assert(next_id == len(self.id_vocab))
+        for special_word in special_words_set:
+            self.id_vocab[next_id] = special_word
+            self.vocab_id[special_word] = next_id
+            next_id += 1
 
-        # track the max_id for the purpose of adding new words later
-        max_id = 0
+        # quick sanity checks
+        assert(next_id == len(self.id_vocab))
+        assert(next_id == len(self.vocab_id))
 
-        # track special_tokens
-        special_tokens_set = set([])
-
-        # track the max special token size
-        self.max_special_token_length = 0
-
-        for id in vocab:
-            # update max id
-            max_id = max(max_id, id)
-
-            # update our dictionaries
-            word = vocab[id]
-            self.id_vocab[id] = word
-            self.vocab_id[word] = id
-
-            # handle special tokens and assumes they appear aftre all normal vocab words
-            if id >= normal_vocab_length:
-                special_word_str = word.decode('utf-8')
-                special_tokens_set.add(special_word_str)
-                self.max_special_token_length = max(self.max_special_token_length, len(special_word_str))
-
-        # add the new special tokens
-        if special_tokens is not None:
-            for special_word_str in special_tokens:
-                if special_word_str not in special_tokens_set:
-                    
-                    # update the max id 
-                    max_id += 1
-
-                    # collect the special word string
-                    special_tokens_set.add(special_word_str)
-
-                    # update the max length
-                    self.max_special_token_length = max(self.max_special_token_length, len(special_word_str))
-
-                    # update our encode/decode dictionaries 
-                    special_word = special_word_str.encode('utf-8')
-                    self.id_vocab[max_id] = special_word
-                    self.vocab_id[special_word] = max_id
-
+        # figure out the maximum length of a special token in characters
+        special_strings = set([token.decode('utf-8') for token in special_words_set])
+        self.max_special_token_length = max([len(string) for string in special_strings])
 
         # pattern used for pretokenized splitting (including parenthesis this time)
-        self.special_token_pattern = create_special_token_string(special_tokens=special_tokens_set,
+        self.special_token_pattern = create_special_token_string(special_tokens=special_strings,
                                                                  include_specials=True)
-
+        
         # cache pretoken encodings for later use
         self.pretoken_encodings = {}
+        
+        # some sanity checking
+        for voc in self.vocab_id:
+            assert(self.vocab_id[voc] < len(self.vocab_id))
+
+        for vid in self.id_vocab:
+            assert(vid < len(self.id_vocab))
+
+        assert(len(self.vocab_id) == len(self.id_vocab))
 
     @classmethod
     def from_files(cls, 
                    vocab_filepath:str,
                    merges_filepath:str,
-                   special_tokens: list[str]|None = None):
+                   special_tokens: list[str]|None = None,
+                   vocab_size:int|None = None):
         
-     
-
         # open the pickle file in binary read mode
         vocab = None
         merges = None
@@ -99,10 +131,11 @@ class Tokenizer:
 
         with open(merges_filepath, "rb") as f:
             merges = pickle.load(f)
-
+            
         return cls(vocab=vocab,
                    merges=merges,
-                   special_tokens=special_tokens)
+                   special_tokens=special_tokens,
+                   vocab_size=vocab_size)
     
     def encode_pretoken(self, pretoken:str)->list[int]:
         if pretoken not in self.pretoken_encodings:
@@ -114,14 +147,17 @@ class Tokenizer:
 
         # convert our pretoken into an initial list of bytes
         bytes_list = [bytes([b]) for b in pretoken.encode('utf-8')]
-
+        counter = 0
         while True:
+            counter += 1
             best_merge_id = len(self.merges)
 
             # search through all possible to merges and see if any appear
             for potential_merge in zip(bytes_list, bytes_list[1:]):
-                best_merge_id = min(best_merge_id, self.merge_ids.get(potential_merge, best_merge_id))
-
+                if potential_merge in self.merge_ids:
+                    new_merge_id = self.merge_ids[potential_merge]
+                    if new_merge_id < best_merge_id:
+                        best_merge_id = new_merge_id
 
             # get the best merge
             try:
@@ -239,6 +275,7 @@ class EncodingIterator:
     def __next__(self):
 
         # keep grabbing items ffrom string_iter if the backlog is empty
+        count = 0
         while len(self.backlog) == 0:
             # otherwise process the next string
 

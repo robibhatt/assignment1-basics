@@ -2,8 +2,8 @@ from cs336_basics.tokenizer.tokenizer import Tokenizer
 
 
 def test_encode_decode():
-    tokenizer = Tokenizer.from_files(vocab_filepath='data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-train_vocab.pkl',
-                                     merges_filepath='data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-train_merges.pkl')
+    tokenizer = Tokenizer.from_files(vocab_filepath='data/TinyStoriesV2-GPT4/tokenizer/vocab.pkl',
+                                     merges_filepath='data/TinyStoriesV2-GPT4/tokenizer/merges.pkl')
     text = None
     with open("data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-train.txt", "r", encoding="utf-8") as f:
         text = f.read(10000)
@@ -13,8 +13,8 @@ def test_encode_decode():
 
 
 def test_iterable_encode():
-    tokenizer = Tokenizer.from_files(vocab_filepath='data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-train_vocab.pkl',
-                                     merges_filepath='data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-train_merges.pkl',
+    tokenizer = Tokenizer.from_files(vocab_filepath='data/TinyStoriesV2-GPT4/tokenizer/vocab.pkl',
+                                     merges_filepath='data/TinyStoriesV2-GPT4/tokenizer/merges.pkl',
                                      special_tokens=['hello', 'cat', 'the', 'th'])
     text_list = []
     with open("data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-train.txt", "r", encoding="utf-8") as f:

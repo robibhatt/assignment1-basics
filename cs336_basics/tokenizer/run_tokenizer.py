@@ -37,7 +37,7 @@ def tokenize_section(
         if buf:
             np.array(buf, dtype=np.uint16).tofile(g)
 
-
+    
 def _process_chunk(args: tuple[str, int, int, int, Tokenizer, str]) -> None:
     """Worker function: pretokenize one byte range of the file."""
     (
@@ -65,7 +65,8 @@ def tokenize_file_parallel(
     special_tokens: list[str],
     chunk_size: int,
     num_workers: int,
-    output_dir: str
+    output_dir: str,
+    vocab_size: int|None = None,
 ) -> None:
 
 
@@ -74,6 +75,10 @@ def tokenize_file_parallel(
         boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
 
     token_filenames = [output_dir +'/'+str(i)+'.uint16' for i in range(len(boundaries[:-1]))]
+    tokenizers = [Tokenizer.from_files(vocab_filepath=vocab_filepath,
+                                 merges_filepath=merges_filepath,
+                                 special_tokens=special_tokens,
+                                 vocab_size=vocab_size) for i in range(len(boundaries[:-1]))]
 
     # Build tasks as tuples of arguments
     tasks = [
@@ -82,9 +87,7 @@ def tokenize_file_parallel(
             start,
             end,
             chunk_size,
-            Tokenizer.from_files(vocab_filepath=vocab_filepath,
-                                 merges_filepath=merges_filepath,
-                                 special_tokens=special_tokens),
+            tokenizers[i],
             token_filenames[i]
         )
         for i, (start, end) in enumerate(zip(boundaries[:-1], boundaries[1:]))

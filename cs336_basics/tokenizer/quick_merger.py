@@ -24,7 +24,9 @@ class QuickMerger:
     def __init__(self, pretoken_counts: Counter[str]):
 
         # store the counts for computing optimal merges
-        self.pretoken_counts = pretoken_counts
+        self.pretoken_counts = Counter()
+        for pretoken in pretoken_counts:
+            self.pretoken_counts[pretoken] = pretoken_counts[pretoken]
 
         # the byte vocabulary
         self.vocab = [bytes([b]) for b in range(256)]
@@ -106,6 +108,10 @@ class QuickMerger:
             for i in range(len(self.current_encodings[pretoken]) - 1):
                 current_word = self.current_encodings[pretoken][i]
                 next_word = self.current_encodings[pretoken][i+1]
+                # delete the current count
+                cool_pair_count_delta[(current_word, next_word)] -= self.pretoken_counts[pretoken]
+
+                # figure out the merge
                 if prev_step_was_merge:
                     prev_step_was_merge = False
                 else:
@@ -115,15 +121,6 @@ class QuickMerger:
                             new_encoding.append(new_word)
                             new_word_exists = True
                             prev_step_was_merge = True
-
-                            # time to update some pair counts
-                            if i > 0:
-                                cool_pair_count_delta[(self.current_encodings[pretoken][i-1], current_word)] -= self.pretoken_counts[pretoken]
-                                cool_pair_count_delta[(self.current_encodings[pretoken][i-1], new_word)] += self.pretoken_counts[pretoken]
-                            cool_pair_count_delta[(current_word, next_word)] -= self.pretoken_counts[pretoken]
-                            if i < len(self.current_encodings[pretoken]) - 2:
-                                cool_pair_count_delta[(next_word, self.current_encodings[pretoken][i+2])] -= self.pretoken_counts[pretoken]
-                                cool_pair_count_delta[(new_word, self.current_encodings[pretoken][i+2])] += self.pretoken_counts[pretoken]
                         else:
                             # no merge, so just append the word but note that we found it
                             new_encoding.append(current_word)
@@ -144,6 +141,13 @@ class QuickMerger:
                     word_0_exists = True
                 if last_word == word_1:
                     word_1_exists = True
+
+            # update counts with the new_encoding
+            for i in range(len(new_encoding) - 1):
+                current_word = new_encoding[i]
+                next_word = new_encoding[i+1]
+                # delete the current count
+                cool_pair_count_delta[(current_word, next_word)] += self.pretoken_counts[pretoken]
 
             # make sure the boolean values are correct
             if word_0 == word_1:
@@ -172,6 +176,12 @@ class QuickMerger:
 
         # update the pair counts
         self.best_pair_heap.update_counts(counts_delta=cool_pair_count_delta)
+
+        # sanity check
+        if (self.best_pair_heap.pair_counter[merge_pair] != 0):
+            print(merge_pair, self.best_pair_heap.pair_counter[merge_pair])
+            assert(False)
+            pass
 
     def get_vocab_list(self)->list[bytes]:
         """

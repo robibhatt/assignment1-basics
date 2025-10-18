@@ -49,6 +49,7 @@ def train_bpe(
         vocab[start_id] = special_string.encode('utf-8')
         start_id += 1
 
+
     # serialize if needed. Always stores in same directory as text file
     if serialize:
 
