@@ -64,13 +64,16 @@ def tokenize_file_parallel(
     merges_filepath: str,
     special_tokens: list[str],
     chunk_size: int,
-    num_workers: int
+    num_workers: int,
+    output_dir: str
 ) -> None:
 
 
     with open(training_text_filename, "rb") as f:
         num_processes = num_workers
         boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
+
+    token_filenames = [output_dir +'/'+str(i)+'.uint16' for i in range(len(boundaries[:-1]))]
 
     # Build tasks as tuples of arguments
     tasks = [
@@ -82,7 +85,7 @@ def tokenize_file_parallel(
             Tokenizer.from_files(vocab_filepath=vocab_filepath,
                                  merges_filepath=merges_filepath,
                                  special_tokens=special_tokens),
-            training_text_filename[:-4] + '_tokens_' + str(i) + '.uint16'
+            token_filenames[i]
         )
         for i, (start, end) in enumerate(zip(boundaries[:-1], boundaries[1:]))
     ]
@@ -91,36 +94,14 @@ def tokenize_file_parallel(
     with Pool(processes=num_processes) as pool:
         pool.map(_process_chunk, tasks)
 
-
-def main():
-    filename = 'data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-train.txt'
-    vocab_filepath = 'data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-train_vocab.pkl'
-    merge_filepath = 'data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-train_merges.pkl'
-    special_tokens = None
-    chunk_size = 10000
-    num_workers = 5
-    tokenize_file_parallel(
-        training_text_filename=filename,
-        vocab_filepath=vocab_filepath,
-        merges_filepath=merge_filepath,
-        special_tokens=special_tokens,
-        chunk_size=chunk_size,
-        num_workers=num_workers
-    )
-
-    print('ran bpe_tokenizer on ', filename)
-    shards = [filename[:-4] + '_tokens_' + str(i) + '.uint16' for i in range(num_workers)]
-    with open(filename[:-4]+'-data.uint16', "wb") as w:
-        for shard in shards:
+    # delete shards
+    with open(output_dir+'/'+'tokens.uint16', "wb") as w:
+        for shard in token_filenames:
             with open(shard, "rb") as r:
                 shutil.copyfileobj(r, w)
 
-    assert os.path.exists(filename[:-4]+'-data.uint16')
+    assert os.path.exists(output_dir+'/'+'tokens.uint16')
 
     # Delete the shards
-    for shard in shards:
+    for shard in token_filenames:
         os.remove(shard)
-
-
-if __name__ == "__main__":
-    main()

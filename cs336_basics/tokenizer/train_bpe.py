@@ -13,14 +13,22 @@ def train_bpe(
     vocab_size:int,
     special_tokens:list[str],
     serialize:bool=False,
+    num_workers:int=NUM_WORKERS,
+    output_dir:str | None=None,
+    chunk_size:int=64000
 )->tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
+    
+    # add the extra special guy
+    special_tokens = [token for token in special_tokens]
+    if "<|endoftext|>" not in special_tokens:
+        special_tokens.append("<|endoftext|>")
     
     # pretokenization
     string_counter = pretokenize_file_parallel(
         filename=input_path,
         special_tokens=special_tokens,
-        chunk_size=64000,
-        num_workers=NUM_WORKERS
+        chunk_size=chunk_size,
+        num_workers=num_workers
     )
 
     # always have to include the bytes and the special tokens as a default
@@ -44,12 +52,23 @@ def train_bpe(
     # serialize if needed. Always stores in same directory as text file
     if serialize:
 
-        # create paths to the desired pkl files
+        # create default paths to the desired pkl files
         file_path = Path(input_path)
         parent_dir = file_path.parent
         filename = file_path.stem
-        vocab_path = parent_dir / (filename + '_vocab.pkl')
-        merges_path = parent_dir / (filename + '_merges.pkl')
+
+        # use the inputted output path if it exists
+        if output_dir is not None:
+            parent_dir = Path(output_dir)
+
+        # create paths for vocab and merges
+        if output_dir is None:
+            #TODO get rid of all this output_path casework and make it always demanded
+            vocab_path = parent_dir / (filename + '_vocab.pkl')
+            merges_path = parent_dir / (filename + '_merges.pkl')
+        else:
+            vocab_path = parent_dir / ('vocab.pkl')
+            merges_path = parent_dir / ('merges.pkl')
 
         # dump the vocab along with the special tokens list
         with open(vocab_path, "wb") as vf:
