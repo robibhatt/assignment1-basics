@@ -6,14 +6,19 @@ import random
 
 
 def get_batch(x: np.ndarray,
-              batch_size: int,
-              context_length: int,
-              device: str,
-    ) -> tuple[Int[Tensor, "batch_size context_length"], Int[Tensor, "batch_size context_length"]]:
+        batch_size: int,
+        context_length: int,
+        device: str,
+        batch_indices: list[int] | None=None
+) -> tuple[Int[Tensor, "batch_size context_length"], Int[Tensor, "batch_size context_length"]]:
+
     """
     Grab a sample
     """
-    end_indices = [random.randint(context_length, len(x) - 1) for i in range(batch_size)]
+    if batch_indices is None:
+        end_indices = [random.randint(context_length, len(x) - 1) for i in range(batch_size)]
+    else:
+        end_indices = batch_indices 
     in_batch = [x[end-context_length:end] for end in end_indices]
     out_batch = [x[end-context_length+1:end+1] for end in end_indices]
     return (torch.from_numpy(np.stack(in_batch)).to(device=device, dtype=torch.long),

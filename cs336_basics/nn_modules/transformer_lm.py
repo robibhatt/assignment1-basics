@@ -58,7 +58,8 @@ class TransformerLM(nn.Module):
         resid_stream = self.token_embeddings(in_indices)
         resid_stream = self.layers(resid_stream)
         resid_stream = self.ln_final(resid_stream)
-        return self.lm_head(resid_stream)
+        result = self.lm_head(resid_stream)
+        return result
         
     
 

@@ -30,6 +30,7 @@ class MultiHeadSelfAttention(nn.Module):
         self.mask = None
         if max_seq_len is not None:
             self.mask = torch.tril(torch.ones(max_seq_len, max_seq_len), diagonal=0) > 0.9
+            self.mask = self.mask.to(device)
 
         # get rope
         self.rope = None
@@ -68,11 +69,11 @@ class MultiHeadSelfAttention(nn.Module):
         keys = einops.rearrange(keys, "... seq_len (h d_k) -> ... h seq_len d_k", h=self.num_heads)
         values = self.v_proj(x)
         values = einops.rearrange(values, "... seq_len (h d_k) -> ... h seq_len d_k", h=self.num_heads)
-
         mask = None
         seq_len = values.shape[-2]
         if self.mask is None:
             mask = torch.tril(torch.ones(seq_len, seq_len), diagonal=0) > 0.9
+            mask=mask.to(queries.device)
         else:
             mask = self.mask[:seq_len, :seq_len]
 
@@ -82,6 +83,10 @@ class MultiHeadSelfAttention(nn.Module):
                 seq_len = x.shape[-2]
                 token_positions = torch.arange(0, seq_len, device=x.device)
                 token_positions = token_positions.expand(x.shape[:-1])
+
+            # reshape token positions to match queries and keys and such
+            token_positions = einops.repeat(token_positions, "... seq_len -> ... h seq_len", h=self.num_heads)
+
             queries = self.rope(queries, token_positions=token_positions)
             keys = self.rope(keys, token_positions=token_positions)
 

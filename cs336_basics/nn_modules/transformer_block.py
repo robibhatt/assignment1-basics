@@ -50,7 +50,6 @@ class TransformerBlock(nn.Module):
 
     def forward(self, x: Float[Tensor, "... seq_len d_model"]) -> Float[Tensor, "... seq_len d_model"]:
 
-
         # add the attention in
         x = x + self.attn(self.ln1(x))
 

@@ -31,6 +31,8 @@ def cross_entropy(
     x: Int[Tensor, "..."]
 )-> Float[Tensor, ""]:
     
-    o -= o.max(dim=-1, keepdim=True)[0]
-    output = torch.log(torch.exp(o).sum(dim=-1, keepdim=False)) - o.gather(dim=-1, index=x.unsqueeze(-1))
+    o = o - o.max(dim=-1, keepdim=True)[0]
+    bub = torch.log(torch.exp(o).sum(dim=-1, keepdim=True))
+    chub = o.gather(dim=-1, index=x.unsqueeze(-1))
+    output = bub - chub
     return output.mean()
