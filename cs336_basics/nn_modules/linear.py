@@ -29,7 +29,7 @@ class Linear(nn.Module):
         )
 
     def forward(self, x: Float[Tensor, "... d_in"]) -> Float[Tensor, "... d_out"]:
-        return einops.einsum(self.weight, x, "... d_out d_in, ... d_in -> ... d_out")
+        return einops.einsum(self.weight, x, "d_out d_in, ... d_in -> ... d_out")
     
     def set_weights(self, weights: Float[Tensor, "d_out d_in"])->None:
         """

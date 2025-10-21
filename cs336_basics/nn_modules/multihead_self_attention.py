@@ -12,81 +12,61 @@ class MultiHeadSelfAttention(nn.Module):
     def __init__(self, 
         d_model: int,
         num_heads:int,
-        max_seq_len:int | None = None,
-        theta:float | None = None,
+        rope:nn.Module,
         device:torch.device | None = None,
-        dtype:torch.dtype | None = None):
+        dtype:torch.dtype | None = None,
+        use_rope:bool=True):
 
         # initiailize the super module, always gotta do bruv
         super().__init__()
 
+        # silly rope param in case we don't wanna use rope for some reason
+        self.use_rope=use_rope
+
+
         # track the number of heads
         self.num_heads = num_heads
 
-        # set the heads dimension
-        d_v = d_model // num_heads
-
-        # get mask
-        self.mask = None
-        if max_seq_len is not None:
-            self.mask = torch.tril(torch.ones(max_seq_len, max_seq_len), diagonal=0) > 0.9
-            self.mask = self.mask.to(device)
-
-        # get rope
-        self.rope = None
-        if max_seq_len is not None and theta is not None:
-            self.rope = RoPE(theta=theta,
-                             d_k=d_v,
-                             max_seq_len=max_seq_len,
-                             device=device)
+        # set rope
+        self.rope = rope
             
         # create q k v o matrices
-        self.q_proj = Linear(in_features=d_model,
-                             out_features=d_model,
-                             device=device,
-                             dtype=dtype)
-        self.k_proj = Linear(in_features=d_model,
-                             out_features=d_model,
-                             device=device,
-                             dtype=dtype)
-        self.v_proj = Linear(in_features=d_model,
-                             out_features=d_model,
-                             device=device,
-                             dtype=dtype)
         self.output_proj = Linear(in_features=d_model,
                              out_features=d_model,
                              device=device,
                              dtype=dtype)
+        
+        # get initialization variance
+        sigma = (1. / (d_model)) ** (0.5)
+
+        # create and initiailize the qkv weights
+        self.qkv = nn.Parameter(torch.empty(3*d_model, d_model, dtype=dtype, device=device))
+        nn.init.trunc_normal_(
+            self.qkv,
+            mean=0.0,
+            std=sigma,
+            a=-3*sigma,
+            b=3*sigma
+        )
         
 
     def forward(self, 
         x: Float[Tensor, "... seq_len d_in"], 
         token_positions: Int[Tensor, "... seq_len"] | None = None) -> Float[Tensor, "... seq_len d_out"]:
 
-        queries = self.q_proj(x)
+        qkvx = einops.einsum(self.qkv, x, "three_d_model d_model, ... seq_len d_model -> ... seq_len three_d_model")
+        queries, keys, values = torch.chunk(input=qkvx,
+                                            chunks=3,
+                                            dim=-1)
         queries = einops.rearrange(queries, "... seq_len (h d_k) -> ... h seq_len d_k", h=self.num_heads)
-        keys = self.k_proj(x)
         keys = einops.rearrange(keys, "... seq_len (h d_k) -> ... h seq_len d_k", h=self.num_heads)
-        values = self.v_proj(x)
         values = einops.rearrange(values, "... seq_len (h d_k) -> ... h seq_len d_k", h=self.num_heads)
-        mask = None
+
+        # handle the masking
         seq_len = values.shape[-2]
-        if self.mask is None:
-            mask = torch.tril(torch.ones(seq_len, seq_len), diagonal=0) > 0.9
-            mask=mask.to(queries.device)
-        else:
-            mask = self.mask[:seq_len, :seq_len]
+        mask = self.rope.mask[:seq_len, :seq_len]
 
-        if self.rope is not None:
-            if token_positions is None:
-                # get the token positions
-                seq_len = x.shape[-2]
-                token_positions = torch.arange(0, seq_len, device=x.device)
-                token_positions = token_positions.expand(x.shape[:-1])
-
-            # reshape token positions to match queries and keys and such
-            token_positions = einops.repeat(token_positions, "... seq_len -> ... h seq_len", h=self.num_heads)
-
+        if self.use_rope:
             queries = self.rope(queries, token_positions=token_positions)
             keys = self.rope(keys, token_positions=token_positions)
 
@@ -103,9 +83,8 @@ class MultiHeadSelfAttention(nn.Module):
         """
         Copies weights
         """
-        self.q_proj.set_weights(weights=q_proj_weight)
-        self.k_proj.set_weights(weights=k_proj_weight)
-        self.v_proj.set_weights(weights=v_proj_weight)
+        with torch.no_grad():
+            self.qkv.copy_(torch.cat((q_proj_weight, k_proj_weight, v_proj_weight), dim=0))
         self.output_proj.set_weights(weights=o_proj_weight)
 
 

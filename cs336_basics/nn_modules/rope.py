@@ -47,15 +47,24 @@ class RoPE(nn.Module):
         self.register_buffer(name='R',
                              tensor=R,
                              persistent=False)
+        
+        mask = torch.tril(torch.ones(max_seq_len, max_seq_len), diagonal=0) > 0.9
+        self.register_buffer(name='mask',
+                             tensor=mask,
+                             persistent=False)
     
 
     def forward(self, x: Float[Tensor, "... seq_len d_k"],
-        token_positions: Int[Tensor, "... seq_len"]) -> Float[Tensor, "... seq_len d_k"]:
+        token_positions: Int[Tensor, "... seq_len"] | None = None) -> Float[Tensor, "... seq_len d_k"]:
 
         x_dtype = x.dtype
         x = x.to(torch.float32)
         *lead, d_k = x.shape
-        answer = einops.einsum(self.R[token_positions], x.view(*lead, d_k//2, 2), "... r c, ... c -> ... r")
+        if token_positions is not None:
+            answer = einops.einsum(self.R[token_positions], x.view(*lead, d_k//2, 2), "... sq dk2 r c, ... sq dk2 c -> ... sq dk2 r")
+        else:
+            seq_len = x.shape[-2]
+            answer = einops.einsum(self.R[:seq_len], x.view(*lead, d_k//2, 2), "sq dk2 r c, ... sq dk2 c -> ... sq dk2 r")
         return einops.rearrange(answer, "... d r -> ... (d r)").to(x_dtype)
         
 

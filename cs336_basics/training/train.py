@@ -175,7 +175,8 @@ def run_training_loop(cfg: TrainConfig,
                           d_ff=cfg.d_ff,
                           rope_theta=cfg.rope_theta,
                           device=device,
-                          dtype=cfg.dtype)
+                          dtype=cfg.dtype,
+                          weight_tying=cfg.weight_tying)
     
     # create the optimizer
     optimizer = AdamW(params=model.parameters(),

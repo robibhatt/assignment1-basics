@@ -32,4 +32,4 @@ grad_clip_eps: 1.0e-6
 alpha_max: 1.0e-4
 alpha_min: 1.0e-6
 warmup_steps: 10
-
+weight_tying: true

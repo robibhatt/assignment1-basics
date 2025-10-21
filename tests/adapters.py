@@ -171,10 +171,18 @@ def run_multihead_self_attention(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
+    seq_len = in_features.shape[-2]
+    # make the rope
+    rope = RoPE(theta=10000.0,
+                d_k=d_model // num_heads,
+                max_seq_len=seq_len,
+                device=in_features.device)
     my_mod = MultiHeadSelfAttention(d_model=d_model,
                                     num_heads=num_heads,
+                                    rope=rope,
                                     device=q_proj_weight.device,
-                                    dtype=q_proj_weight.dtype)
+                                    dtype=q_proj_weight.dtype,
+                                    use_rope=False)
     my_mod.set_weights(q_proj_weight=q_proj_weight,
                        k_proj_weight=k_proj_weight,
                        v_proj_weight=v_proj_weight,
@@ -219,10 +227,14 @@ def run_multihead_self_attention_with_rope(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
+    # make the rope
+    rope = RoPE(theta=10000.0,
+                d_k=d_model // num_heads,
+                max_seq_len=max_seq_len,
+                device=in_features.device)
     my_mod = MultiHeadSelfAttention(d_model=d_model,
                                     num_heads=num_heads,
-                                    max_seq_len=max_seq_len,
-                                    theta=theta,
+                                    rope=rope,
                                     device=q_proj_weight.device,
                                     dtype=q_proj_weight.dtype)
     my_mod.set_weights(q_proj_weight=q_proj_weight,
@@ -327,12 +339,37 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
+     # Build a new state dict that matches TransformerBlock’s expected keys.
+    new_sd = {}
+
+    # Copy everything except the split q/k/v (we’ll fuse those)
+    for k, v in weights.items():
+        if any(s in k for s in ("attn.q_proj.", "attn.k_proj.", "attn.v_proj.")):
+            continue
+        new_sd[k] = v
+
+    # Fuse Q, K, V -> attn.qkv.weight (and bias if present)
+    Wq = weights["attn.q_proj.weight"]  # (d_model, d_model)
+    Wk = weights["attn.k_proj.weight"]
+    Wv = weights["attn.v_proj.weight"]
+    new_sd["attn.qkv"] = torch.cat([Wq, Wk, Wv], dim=0)  # (3*d_model, d_model)
+
+
+    # make the rope
+    rope = RoPE(theta=theta,
+                d_k=d_model // num_heads,
+                max_seq_len=max_seq_len,
+                device=in_features.device)
+
+
     transformer_block = TransformerBlock(d_model=d_model,
                                          num_heads=num_heads,
                                          d_ff=d_ff,
-                                         max_seq_len=max_seq_len,
-                                         theta=theta)
-    transformer_block.load_state_dict(weights, strict="False")
+                                         rope=rope,
+                                         device=in_features.device,
+                                         dtype=in_features.dtype
+                                         )
+    transformer_block.load_state_dict(new_sd, strict="False")
     return transformer_block(in_features)
 
 
@@ -415,6 +452,28 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
+    new_sd = {}
+    # copy everything except split q/k/v
+    skip_substrings = ("attn.q_proj.", "attn.k_proj.", "attn.v_proj.")
+    for k, v in weights.items():
+        if any(s in k for s in skip_substrings):
+            continue
+        new_sd[k] = v
+
+    # fuse per-layer
+    for i in range(num_layers):
+        qk = f"layers.{i}.attn.q_proj.weight"
+        kk = f"layers.{i}.attn.k_proj.weight"
+        vk = f"layers.{i}.attn.v_proj.weight"
+        try:
+            Wq = weights[qk]
+            Wk = weights[kk]
+            Wv = weights[vk]
+        except KeyError as e:
+            raise KeyError(f"Missing expected split Q/K/V key for layer {i}: {e}") from None
+
+        # (3*d_model, d_model); concat along out-dim
+        new_sd[f"layers.{i}.attn.qkv"] = torch.cat([Wq, Wk, Wv], dim=0)
     optimus_prime = TransformerLM(vocab_size=vocab_size,
                                   context_length=context_length,
                                   d_model=d_model,
@@ -422,7 +481,7 @@ def run_transformer_lm(
                                   num_heads=num_heads,
                                   d_ff=d_ff,
                                   rope_theta=rope_theta)
-    optimus_prime.load_state_dict(weights, strict="False")
+    optimus_prime.load_state_dict(new_sd, strict="False")
     return optimus_prime(in_indices)
 
 

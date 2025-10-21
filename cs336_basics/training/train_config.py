@@ -57,6 +57,7 @@ class TrainConfig:
     alpha_min: float
     alpha_max: float
     warmup_steps: int
+    weight_tying: bool
 
 
 def to_yaml(cfg: TrainConfig,
