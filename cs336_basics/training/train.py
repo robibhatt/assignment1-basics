@@ -307,12 +307,12 @@ def train(cfg: TrainConfig)->str:
     run_dir = make_run_dir(cfg=cfg)
 
     # initiailize wandb
-    wandb.init(
-        project="stanford_class_assignment_1",
-        name=f"{os.path.basename(cfg.home_dir)}_{os.path.basename(run_dir)}",
-        config=asdict(cfg),
-        dir=run_dir,
-    )
+    #wandb.init(
+    #    project="stanford_class_assignment_1",
+    #    name=f"{os.path.basename(cfg.home_dir)}_{os.path.basename(run_dir)}",
+    #    config=asdict(cfg),
+    #    dir=run_dir,
+    #)
 
     # set metrics
     if wandb.run is not None:

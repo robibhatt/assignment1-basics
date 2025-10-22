@@ -21,7 +21,7 @@ def scaled_dot_product_attention(
     qtk = einops.einsum(Q, K, "... queries d_k, ... keys d_k -> ... queries keys") / (d_k) ** 0.5
     
     if mask is not None:
-        qtk = torch.where(mask, qtk, -torch.inf)
+        qtk = torch.where(mask, qtk, qtk.new_full((), float("-inf")))
 
     return einops.einsum(softmax(qtk, dim=-1), V, "... queries keys,  ... keys d_v -> ... queries d_v")
 
@@ -35,4 +35,5 @@ def cross_entropy(
     bub = torch.log(torch.exp(o).sum(dim=-1, keepdim=True))
     chub = o.gather(dim=-1, index=x.unsqueeze(-1))
     output = bub - chub
+    assert(output.dtype == o.dtype)
     return output.mean()
