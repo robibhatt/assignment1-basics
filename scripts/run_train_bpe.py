@@ -17,7 +17,7 @@ def main():
     chunk_size = 64000
     shutil.rmtree(output_dir, ignore_errors=True)
     os.makedirs(output_dir, exist_ok=True)
-    num_workers = 5
+    num_workers = 6
     debug = True
     (vocab, merges) = train_bpe(input_path=train_file,
                             vocab_size=max_vocab_size,

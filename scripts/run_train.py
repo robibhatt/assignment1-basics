@@ -1,7 +1,5 @@
 from cs336_basics.training.train_config import from_yaml
 from cs336_basics.training.train import TrainConfig, train
-import yaml
-import torch
 import cProfile, pstats
 from pathlib import Path
 
