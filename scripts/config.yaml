@@ -20,12 +20,12 @@ num_heads: 16
 d_ff: 512
 rope_theta: 10000.0
 dtype: float32
-lr: 1e-4
+lr: 1.0e-4
 betas:
 - 0.9
 - 0.99
 weight_decay: 0.0
-opt_eps: 1e-8
+opt_eps: 1.0e-8
 val_batches: 10
 max_norm: 1.0
 grad_clip_eps: 1.0e-6

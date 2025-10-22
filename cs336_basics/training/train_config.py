@@ -1,26 +1,5 @@
 from dataclasses import asdict, dataclass
-import torch
 import yaml
-
-
-DTYPE_MAP = {
-    "float32": torch.float32,
-    "float": torch.float32,
-    "float64": torch.float64,
-    "double": torch.float64,
-    "float16": torch.float16,
-    "half": torch.float16,
-    "bfloat16": torch.bfloat16,
-    "int64": torch.int64,
-    "long": torch.long,
-    "int32": torch.int32,
-    "int": torch.int32,
-    "int16": torch.int16,
-    "short": torch.int16,
-    "int8": torch.int8,
-    "uint8": torch.uint8,
-    "bool": torch.bool,
-}
 
 
 @dataclass
@@ -46,9 +25,11 @@ class TrainConfig:
     num_heads: int
     d_ff: int
     rope_theta: float
-    dtype: torch.dtype
+    # Store dtype as a simple string like "float32"
+    dtype: str
     lr: float
-    betas: tuple[float, float]
+    # Store betas as a YAML/JSON-native list
+    betas: list[float]
     weight_decay: float
     opt_eps: float
     val_batches: int
@@ -60,26 +41,14 @@ class TrainConfig:
     weight_tying: bool
 
 
-def to_yaml(cfg: TrainConfig,
-            yamlfile: str):
+def to_yaml(cfg: TrainConfig, yamlfile: str) -> None:
+    """Dump config directly; all fields are YAML/JSON-native."""
     with open(yamlfile, "w") as f:
-        safedict = asdict(cfg)
-        safedict['dtype'] = str(safedict['dtype']).replace("torch.", "")
-        yaml.safe_dump(safedict, f, sort_keys=False)
+        yaml.safe_dump(asdict(cfg), f, sort_keys=False)
 
 
-def from_yaml(yamlfile: str)->TrainConfig:
+def from_yaml(yamlfile: str) -> TrainConfig:
+    """Load config directly; YAML handles numeric/boolean parsing."""
     with open(yamlfile) as f:
         data = yaml.safe_load(f)
-
-        # some type coersion 
-        data["lr"] = float(data["lr"])
-        data["opt_eps"] = float(data["opt_eps"])
-        data["grad_clip_eps"] = float(data["grad_clip_eps"])
-        data["weight_decay"] = float(data["weight_decay"])
-        data["betas"] = tuple(float(b) for b in data["betas"])
-        data["dtype"] = DTYPE_MAP[str(data["dtype"]).lower()]
-        data['alpha_max'] = float(data['alpha_max'])
-        data['alpha_min'] = float(data['alpha_min'])
-
-        return TrainConfig(**data)
+    return TrainConfig(**data)

@@ -48,7 +48,7 @@ class RoPE(nn.Module):
                              tensor=R,
                              persistent=False)
         
-        mask = torch.tril(torch.ones(max_seq_len, max_seq_len), diagonal=0) > 0.9
+        mask = torch.tril(torch.ones(max_seq_len, max_seq_len, device=device, dtype=torch.bool))
         self.register_buffer(name='mask',
                              tensor=mask,
                              persistent=False)

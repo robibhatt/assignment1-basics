@@ -3,6 +3,7 @@ import time
 import os
 import numpy as np
 import json
+import wandb
 from cs336_basics.tokenizer.train_bpe import train_bpe
 from cs336_basics.tokenizer.run_tokenizer import tokenize_file_parallel
 from cs336_basics.tokenizer.pretokenizer import find_chunk_boundaries
@@ -175,13 +176,13 @@ def run_training_loop(cfg: TrainConfig,
                           d_ff=cfg.d_ff,
                           rope_theta=cfg.rope_theta,
                           device=device,
-                          dtype=cfg.dtype,
+                          dtype=getattr(torch, cfg.dtype),
                           weight_tying=cfg.weight_tying)
     
     # create the optimizer
     optimizer = AdamW(params=model.parameters(),
                       lr=cfg.lr,
-                      betas=cfg.betas,
+                      betas=tuple(cfg.betas),
                       weight_decay=cfg.weight_decay,
                       eps=cfg.opt_eps)
     
@@ -191,11 +192,18 @@ def run_training_loop(cfg: TrainConfig,
     log_path = run_dir + '/logs/metrics.jsonl'
     checkpoint_path = run_dir + '/checkpoints'
 
+
+    # log gradients for wandb
+    if wandb.run is not None:
+        # gradient logging is lightweight at this scale; adjust log_freq if needed
+        wandb.watch(model, log="gradients", log_freq=max(1, cfg.checkpoint_interval))
+
     # get val batches
     val_batch_ids = [[random.randint(cfg.context_length, len(valid_array) - 1) for i in range(cfg.batch_size)] for j in range(cfg.val_batches)]
 
     decay = 0.9
     train_loss_avg = None
+    current_lr = 0.0
 
     for step in range(cfg.total_step_count+1):
         print('train step', step)
@@ -244,6 +252,25 @@ def run_training_loop(cfg: TrainConfig,
                             iteration=step,
                             out=checkpoint_path+'/'+str(step))
             
+            # log with wandb
+            if wandb.run is not None:
+                wandb.log({
+                    "step": step,
+                    "valid/loss": metrics['valid_loss'],
+                    "train/loss_ewma": train_loss_avg,
+                    "optimizer/lr": current_lr
+                }, step=step)
+
+        # log the train loss with wandb
+        else:
+            if wandb.run is not None:
+                wandb.log({
+                    "step": step,
+                    "train/loss_ewma": train_loss_avg,
+                    "optimizer/lr": current_lr
+                }, step=step)
+        
+            
         # this is since we wanna log after we are done training
         if step == cfg.total_step_count:
             break
@@ -279,6 +306,19 @@ def train(cfg: TrainConfig)->str:
     # create the directory
     run_dir = make_run_dir(cfg=cfg)
 
+    # initiailize wandb
+    wandb.init(
+        project="stanford_class_assignment_1",
+        name=f"{os.path.basename(cfg.home_dir)}_{os.path.basename(run_dir)}",
+        config=asdict(cfg),
+        dir=run_dir,
+    )
+
+    # set metrics
+    if wandb.run is not None:
+        wandb.define_metric("step")
+        wandb.define_metric("*", step_metric="step")
+
     # populate the data
     create_data(cfg=cfg,
                 run_dir=run_dir)
@@ -295,6 +335,14 @@ def train(cfg: TrainConfig)->str:
     run_training_loop(cfg=cfg,
                       run_dir=run_dir,
                       device=device)
+    
+    # close wandb if needed
+    if wandb.run is not None:
+        try:
+            wandb.save(run_dir + "/checkpoints/*", base_path=run_dir)
+        except Exception:
+            pass
+        wandb.finish()
     
     return run_dir
 
