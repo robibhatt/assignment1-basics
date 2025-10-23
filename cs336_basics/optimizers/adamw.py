@@ -5,6 +5,7 @@ import math
 
 
 class AdamW(torch.optim.Optimizer):
+
     def __init__(self, 
         params: Iterable[torch.nn.Parameter], 
         lr: float = 1e-3,
@@ -18,11 +19,11 @@ class AdamW(torch.optim.Optimizer):
         super().__init__(params, defaults)
 
     def step(self, closure: Optional[Callable[[], torch.Tensor]] = None) -> Optional[torch.Tensor]:
-        loss: Optional[torch.Tensor] = None if closure is None else closure()  # type of variable 'loss'
+        loss: Optional[torch.Tensor] = None if closure is None else closure()
 
         for group in self.param_groups:
             lr: float = group["lr"]
-            (beta_1, beta_2) = group["betas"]
+            beta_1, beta_2 = group["betas"]
             lambda_: float = group["lambda_"]
             eps: float = group["eps"]
 
@@ -30,33 +31,44 @@ class AdamW(torch.optim.Optimizer):
                 if p.grad is None:
                     continue
 
-                p_state: dict[str, Any] = self.state[p]
+                state = self.state[p]
 
+                # --- init state (keep moments in fp32) ---
+                t: int = state.get("t", 0)
+                m: torch.Tensor = state.get("m", torch.zeros_like(p, dtype=torch.float32, device=p.device))
+                v: torch.Tensor = state.get("v", torch.zeros_like(p, dtype=torch.float32, device=p.device))
 
-                # get the grad and the data
-                grad: torch.Tensor = p.grad.data
-                p_data: torch.Tensor = p.data
+                # --- grads (detach, cast to fp32 for stable moment updates) ---
+                g32 = p.grad.detach().float()
 
-                # set t, m, v
-                t: int = p_state.get("t", 1)
-                m: float = p_state.get("m", torch.zeros_like(p_data))
-                v: float = p_state.get("v", torch.zeros_like(p_data))
+                # --- update moments (in-place, fp32) ---
+                m.mul_(beta_1).add_(g32, alpha=1.0 - beta_1)
+                v.mul_(beta_2).addcmul_(g32, g32, value=1.0 - beta_2)
 
-                # update m and v
-                p_state["m"] = beta_1*m + (1-beta_1) * grad
-                p_state["v"] = beta_2*v + (1 - beta_2)* (grad*grad)
+                # --- bias correction ---
+                t += 1
+                bc1 = 1.0 - (beta_1 ** t)
+                bc2 = 1.0 - (beta_2 ** t)
+                mhat = m / bc1
+                vhat = v / bc2
 
-                # set the effective learning rate
-                adjusted_lr = lr * (1 - (beta_2) ** t) **0.5 / (1 - (beta_1) ** t)
+                # --- update (do math in fp32, cast to param dtype) ---
+                denom = vhat.sqrt().add_(eps)
+                upd32 = (lr * mhat) / denom
+                upd = upd32.to(dtype=p.dtype)
 
-                update: torch.Tensor = adjusted_lr * p_state["m"] / (torch.sqrt(p_state["v"]) + eps) 
-                p_data -= update
-                p_data *= (1 - lr * lambda_)
+                # --- decoupled weight decay + param update (no autograd) ---
+                with torch.no_grad():
+                    if lambda_ != 0.0:
+                        p.mul_(1.0 - lr * lambda_)
+                    p.add_(-upd)
 
-                # update t
-                p_state["t"] = t + 1
+                # --- persist state ---
+                state["t"] = t
+                state["m"] = m
+                state["v"] = v
 
-        return loss 
+        return loss
 
 if __name__ == "__main__":
     weights: torch.nn.Parameter = torch.nn.Parameter(5 * torch.randn((10, 10))) 
