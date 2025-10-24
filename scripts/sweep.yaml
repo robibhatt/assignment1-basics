@@ -1,9 +1,9 @@
 # sweep.yaml
-method: bayes
+method: random
 metric:
   name: valid/loss
   goal: minimize
-run_cap: 5              # stop globally after 40 runs
+run_cap: 40              # stop globally after 40 runs
 
 early_terminate:         # prune bad configs early
   type: hyperband

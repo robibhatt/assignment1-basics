@@ -13,4 +13,4 @@ scontrol show job $SLURM_JOB_ID
 pwd
 nvidia-smi # only if you requested gpus
 
-uv run wandb sweep scripts/sweep.yaml
+uv run scripts/create_sweep.py
