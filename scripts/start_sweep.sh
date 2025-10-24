@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=ibor_train_bpe
-#SBATCH --output=logs/train_bpe.out
-#SBATCH --error=logs/train_bpe.err
+#SBATCH --job-name=make_sweep_bori
+#SBATCH --output=logs/start_sweep.out
+#SBATCH --error=logs/start_Sweep.err
 #SBATCH --partition=2080-galvani
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
