@@ -13,4 +13,4 @@ scontrol show job $SLURM_JOB_ID
 pwd
 nvidia-smi # only if you requested gpus
 
-uv run wandb agent robibhatt-university-of-tuebingen/assignment1-basics/ipssfpdl
+uv run wandb agent robibhatt-university-of-tuebingen/stanford_class_assignment_1/ogct5enx
