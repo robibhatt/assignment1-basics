@@ -155,6 +155,8 @@ def validation_loss(valid_array: np.ndarray,
                                               batch_indices=batch_ids)
             o = model(input_batch)
             total += cross_entropy(o = o, x = output_batch).item()
+            if cfg.debug and val_batch == 1:
+                return total
         return total / len(val_batch_ids)
 
 
@@ -212,10 +214,19 @@ def run_training_loop(cfg: TrainConfig,
 
 
         # grab the batch to train on
-        input_batch, output_batch = get_batch(x=train_array,
-                                              batch_size=cfg.batch_size,
-                                              context_length=cfg.context_length,
-                                              device=device)
+        if not cfg.debug:
+            input_batch, output_batch = get_batch(x=train_array,
+                                                batch_size=cfg.batch_size,
+                                                context_length=cfg.context_length,
+                                                device=device)
+
+        else:
+            # we are training on a single batch
+            input_batch, output_batch = get_batch(x=train_array,
+                                    batch_size=cfg.batch_size,
+                                    context_length=cfg.context_length,
+                                    device=device,
+                                    batch_indices=val_batch_ids[0])
         
         
         # compute the loss with a forward pass
@@ -306,13 +317,24 @@ def train(cfg: TrainConfig)->str:
     # create the directory
     run_dir = make_run_dir(cfg=cfg)
 
+    # check if we are in a sweep
+    sweep_id = os.environ.get("WANDB_SWEEP_ID")
+    name = None if sweep_id else f"{os.path.basename(cfg.home_dir)}_{os.path.basename(run_dir)}"
+
     # initiailize wandb
-    #wandb.init(
-    #    project="stanford_class_assignment_1",
-    #    name=f"{os.path.basename(cfg.home_dir)}_{os.path.basename(run_dir)}",
-    #    config=asdict(cfg),
-    #    dir=run_dir,
-    #)
+    wandb.init(
+        project="stanford_class_assignment_1",
+        name=name,
+        config=asdict(cfg),
+        dir=run_dir,
+    )
+
+    # get params from wandb if we are doing a sweep
+        # Merge sweep-provided overrides into cfg
+    wc = dict(wandb.config)
+    for k, v in wc.items():
+        if hasattr(cfg, k):
+            setattr(cfg, k, v)
 
     # set metrics
     if wandb.run is not None:
