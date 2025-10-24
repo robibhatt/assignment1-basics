@@ -18,32 +18,32 @@ command:
 parameters:
   # --- Core learning parameters ---
   lr:
-    distribution: log_uniform
+    distribution: log_uniform_values
     min: 1e-5
     max: 5e-3
 
   weight_decay:
-    distribution: log_uniform
+    distribution: log_uniform_values
     min: 1e-7
     max: 1e-3
 
   opt_eps:
-    distribution: log_uniform
+    distribution: log_uniform_values
     min: 1e-9
     max: 1e-6
 
   grad_clip_eps:
-    distribution: log_uniform
+    distribution: log_uniform_values
     min: 1e-8
     max: 1e-4
 
   alpha_min:
-    distribution: log_uniform
+    distribution: log_uniform_values
     min: 1e-7
     max: 1e-5
 
   alpha_max:
-    distribution: log_uniform
+    distribution: log_uniform_values
     min: 1e-5
     max: 1e-3
 
