@@ -48,4 +48,4 @@ parameters:
     max: 1e-3
 
   warmup_steps:
-    values: [100, 300, 600, 1000]
+    values: [1, 2]

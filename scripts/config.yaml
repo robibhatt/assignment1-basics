@@ -1,35 +1,43 @@
-debug: true
-profile: true
-seed: 123
-home_dir: 'experiments/test'
-train_text_path: data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-valid.txt
-val_text_path: data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-valid.txt
-tokenizer_dir: data/TinyStoriesV2-GPT4/tokenizer
-num_workers: 5
-pretoken_chunk_size: 64000
-vocab_size: 10000
-special_tokens: []
-tokenizer_chunk_size: 64000
-batch_size: 32
-context_length: 256
-total_step_count: 20000
-checkpoint_interval: 1000
-d_model: 512
-num_layers: 4
-num_heads: 16
-d_ff: 1344
-rope_theta: 10000.0
-dtype: float16
-lr: 1.0e-4
-betas:
-- 0.9
-- 0.99
-weight_decay: 1.0e-4
-opt_eps: 1.0e-8
-val_batches: 100
-max_norm: 1.0
-grad_clip_eps: 1.0e-6
-alpha_max: 1.0e-4
-alpha_min: 1.0e-6
-warmup_steps: 600
-weight_tying: true
+out:
+  debug: true
+  profile: true
+  seed: 123
+  home_dir: "experiments/test"
+  checkpoint_interval: 2
+  val_batches: 10
+  use_wandb: true
+
+model:
+  vocab_size: 5000
+  context_length: 128
+  d_model: 256
+  num_layers: 4
+  num_heads: 8
+  d_ff: 672
+  rope_theta: 10000.0
+  dtype: "float32"
+  weight_tying: true
+
+data:
+  train_text_path: data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-valid.txt
+  val_text_path: data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-valid.txt
+  tokenizer_dir: data/TinyStoriesV2-GPT4/tokenizer
+  num_workers: 5
+  pretoken_chunk_size: 64000
+  special_tokens: []
+  tokenizer_chunk_size: 64000
+  batch_size: 8
+
+optim:
+  lr: 1.0e-4
+  betas:
+    - 0.9
+    - 0.99
+  weight_decay: 1.0e-4
+  opt_eps: 1.0e-8
+  max_norm: 1.0
+  grad_clip_eps: 1.0e-6
+  total_step_count: 5
+  warmup_steps: 1
+  alpha_min: 1.0e-6
+  alpha_max: 1.0e-4
