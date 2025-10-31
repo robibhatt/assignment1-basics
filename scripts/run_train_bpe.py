@@ -6,19 +6,35 @@ import tempfile
 from cs336_basics.tokenizer.tokenizer import Tokenizer
 from cs336_basics.tokenizer.pretokenizer import find_chunk_boundaries
 from cs336_basics.tokenizer.file_string_iterator import FileStringIterator
+from cs336_basics.training.train_config import from_yaml
 import numpy as np
 
 
 def main():
-    max_vocab_size = 20000
-    train_file = 'data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-train.txt'
-    valid_file = 'data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-valid.txt'
-    output_dir = 'data/TinyStoriesV2-GPT4/tokenizer'
-    chunk_size = 64000
-    shutil.rmtree(output_dir, ignore_errors=True)
+    # Load config info
+    cfg = from_yaml("../scripts/config.yaml")
+    max_vocab_size = cfg.model.vocab_size
+    chunk_size = cfg.data.pretoken_chunk_size
+
+    train_file = cfg.data.train_text_path
+    valid_file = cfg.data.val_text_path
+    output_dir = cfg.data.tokenizer_dir
+
+    debug = cfg.out.debug
+    num_workers = cfg.data.num_workers
+
+    # Make sure the output directory exists
+    nominal_vocab = output_dir + '/vocab.pkl'
+    nominal_merges = output_dir + '/merges.pkl'
+    
+    # (formerly shutil.rmtree(output_dir, ignore_errors=True)) # probably not good to delete everything in the directory lol
+    # Remove the nominal vocab and 
+    os.remove(nominal_vocab)
+    os.remove(nominal_merges)
+    
+    # make the directory for the output
     os.makedirs(output_dir, exist_ok=True)
-    num_workers = 6
-    debug = True
+
     (vocab, merges) = train_bpe(input_path=train_file,
                             vocab_size=max_vocab_size,
                             special_tokens=[],
@@ -32,8 +48,8 @@ def main():
     assert(len(merge_set) == len(merges))
     if debug:
         vocab_size=500
-        vocab_filepath = output_dir+'/vocab.pkl'
-        merges_filepath = output_dir+'/merges.pkl'
+        vocab_filepath = nominal_vocab
+        merges_filepath = nominal_merges
         with tempfile.TemporaryDirectory() as tmpdir:
 
             # tokenize the validation file
