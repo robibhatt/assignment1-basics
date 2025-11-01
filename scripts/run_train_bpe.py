@@ -9,6 +9,11 @@ from cs336_basics.tokenizer.file_string_iterator import FileStringIterator
 from cs336_basics.training.train_config import from_yaml
 import numpy as np
 
+def delete_if_exists(filename):
+    if os.path.exists(filename):
+        os.remove(filename) 
+        # os.remove throws an error if the file doesn't exist, so we gotta check first
+
 
 def main():
     # Load config info
@@ -27,14 +32,14 @@ def main():
     nominal_vocab = output_dir + '/vocab.pkl'
     nominal_merges = output_dir + '/merges.pkl'
     
-    # (formerly shutil.rmtree(output_dir, ignore_errors=True)) # probably not good to delete everything in the directory lol
-    # Remove the nominal vocab and 
-    os.remove(nominal_vocab)
-    os.remove(nominal_merges)
+    # Remove the nominal vocab and merges files
+    delete_if_exists(nominal_vocab)
+    delete_if_exists(nominal_merges)
     
     # make the directory for the output
     os.makedirs(output_dir, exist_ok=True)
 
+    # Run the actual encoder
     (vocab, merges) = train_bpe(input_path=train_file,
                             vocab_size=max_vocab_size,
                             special_tokens=[],
