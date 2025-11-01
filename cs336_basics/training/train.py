@@ -193,7 +193,8 @@ def run_training_loop(cfg: TrainConfig, run_dir: str, device: torch.device):
     current_lr = 0.0
 
     for step in range(cfg.optim.total_step_count + 1):
-        print('train step', step)
+        if step % cfg.out.checkpoint_interval == 0:
+            print('train step', step)
         # zero out all the gradients
         optimizer.zero_grad()
 
@@ -222,7 +223,7 @@ def run_training_loop(cfg: TrainConfig, run_dir: str, device: torch.device):
             train_loss_avg += decay * (loss.item() - train_loss_avg)
 
         # every so often we log 
-        if step % cfg.out.checkpoint_interval == 0:
+        if step % cfg.out.log_interval == 0:
             metrics = {}
             metrics['valid_loss'] = validation_loss(valid_array=valid_array,
                                                     val_batch_ids=val_batch_ids,
@@ -233,28 +234,24 @@ def run_training_loop(cfg: TrainConfig, run_dir: str, device: torch.device):
 
             log_metrics(step=step, log_path=log_path, metrics=metrics)
 
-            # this is the model AFTER we have trained for step steps
-            save_checkpoint(model=model,
-                            optimizer=optimizer,
-                            iteration=step,
-                            out=checkpoint_path + '/' + str(step))
-
             # log with wandb
             if wandb.run is not None:
                 wandb.log({
                     "step": step,
                     "valid/loss": metrics['valid_loss'],
                     "train/loss_ewma": train_loss_avg,
+                    "train/loss": loss.item(),
                     "optimizer/lr": current_lr
                 }, step=step)
 
-        else:
-            if wandb.run is not None:
-                wandb.log({
-                    "step": step,
-                    "train/loss_ewma": train_loss_avg,
-                    "optimizer/lr": current_lr
-                }, step=step)
+        
+        # every so often we checkpoint
+        if step % cfg.out.checkpoint_interval == 0:
+            # this is the model AFTER we have trained for step steps
+            save_checkpoint(model=model,
+                            optimizer=optimizer,
+                            iteration=step,
+                            out=checkpoint_path + '/' + str(step))
 
         # this is since we wanna log after we are done training
         if step == cfg.optim.total_step_count:
