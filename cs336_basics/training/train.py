@@ -20,6 +20,7 @@ from cs336_basics.optimizers.adamw import AdamW
 from cs336_basics.optimizers.optimizer_utils import lr_cosine_schedule, clip_gradients
 from cs336_basics.checkpoints.checkpoint import save_checkpoint
 from cs336_basics.torch_utils import cross_entropy
+from tqdm import tqdm
 
 
 def count_graph_nodes_from_loss(loss) -> int:
@@ -134,8 +135,7 @@ def validation_loss(valid_array: np.ndarray,
     with torch.inference_mode():
         total = 0.0
         val_batch = 0
-        for batch_ids in val_batch_ids:
-            print('val', val_batch)
+        for batch_ids in tqdm(val_batch_ids, desc="Validating", disable=True):
             val_batch += 1
             input_batch, output_batch = get_batch(x=valid_array,
                                                   batch_size=cfg.data.batch_size,
@@ -166,6 +166,9 @@ def run_training_loop(cfg: TrainConfig, run_dir: str, device: torch.device):
                           dtype=getattr(torch, cfg.model.dtype),
                           weight_tying=cfg.model.weight_tying)
 
+    # compile the model (speeds up training)
+    # model = torch.compile(model)
+
     # create the optimizer
     optimizer = AdamW(params=model.parameters(),
                       lr=cfg.optim.lr,
@@ -192,9 +195,7 @@ def run_training_loop(cfg: TrainConfig, run_dir: str, device: torch.device):
     train_loss_avg = None
     current_lr = 0.0
 
-    for step in range(cfg.optim.total_step_count + 1):
-        if step % cfg.out.checkpoint_interval == 0:
-            print('train step', step)
+    for step in tqdm(range(cfg.optim.total_step_count + 1), desc="Training"):
         # zero out all the gradients
         optimizer.zero_grad()
 
