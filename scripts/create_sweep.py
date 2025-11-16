@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import yaml, os, wandb, sys
+# import 
 
-CONFIG_PATH = "scripts/config.yaml"
-SWEEP_PATH = "scripts/sweep.yaml"
+CONFIG_PATH = "./scripts/config.yaml"
+SWEEP_PATH = "./scripts/sweep.yaml"
 PROJECT = "stanford_class_assignment_1"
-ENTITY = os.environ.get("WANDB_ENTITY", "robibhatt-university-of-tuebingen")
 
 # 1) Load the fixed training config
 if not os.path.exists(CONFIG_PATH):
@@ -12,10 +12,17 @@ if not os.path.exists(CONFIG_PATH):
 with open(CONFIG_PATH) as f:
     cfg = yaml.safe_load(f)
 
+model_cfg = cfg['model'] # Need the model config to specify the architecture.
+
+if 'wandb_entity' in cfg['out']:
+    ENTITY = cfg['out']['wandb_entity']
+else:
+    ENTITY = os.environ.get("WANDB_ENTITY", "robibhatt-university-of-tuebingen")
+
 # 2) Build architecture name for sweep
 arch = (
-    f"d{cfg['d_model']}_L{cfg['num_layers']}_H{cfg['num_heads']}_"
-    f"ff{cfg['d_ff']}_ctx{cfg['context_length']}_v{cfg['vocab_size']}_{cfg['dtype']}"
+    f"d{model_cfg['d_model']}_L{model_cfg['num_layers']}_H{model_cfg['num_heads']}_"
+    f"ff{model_cfg['d_ff']}_ctx{model_cfg['context_length']}_v{model_cfg['vocab_size']}_{model_cfg['dtype']}"
 )
 
 # 3) Load sweep template (no name/project inside)
