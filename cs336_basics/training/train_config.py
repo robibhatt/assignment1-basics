@@ -51,6 +51,7 @@ class OutputConfig:  # output + eval + checkpoint + wandb control
     seed: int
     home_dir: str
     checkpoint_interval: int
+    log_interval: int
     val_batches: int
     use_wandb: bool  # whether to log to W&B at all
 
