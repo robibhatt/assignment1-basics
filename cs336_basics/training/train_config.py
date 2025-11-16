@@ -54,6 +54,7 @@ class OutputConfig:  # output + eval + checkpoint + wandb control
     log_interval: int
     val_batches: int
     use_wandb: bool  # whether to log to W&B at all
+    wandb_entity: str
 
 # ---------------------------
 # Top-level TrainConfig
