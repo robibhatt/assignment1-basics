@@ -1,21 +1,21 @@
 out:
-  debug: true
+  debug: false
   profile: true
   seed: 123
   home_dir: "experiments/test"
-  checkpoint_interval: 500
-  log_interval: 100
-  val_batches: 10
+  checkpoint_interval: 1000
+  log_interval: 2
+  val_batches: 1
   use_wandb: true
   wandb_entity: "testjkw"
 
 model:
-  vocab_size: 5000
-  context_length: 128
-  d_model: 256
+  vocab_size: 10000
+  context_length: 256
+  d_model: 512
   num_layers: 4
-  num_heads: 8
-  d_ff: 672
+  num_heads: 16
+  d_ff: 1344
   rope_theta: 10000.0
   dtype: "float32"
   weight_tying: true
@@ -28,10 +28,10 @@ data:
   pretoken_chunk_size: 64000
   special_tokens: []
   tokenizer_chunk_size: 64000
-  batch_size: 8
+  batch_size: 32
 
 optim:
-  lr: 1.0e-4
+  lr: 5.0e-5
   betas:
     - 0.9
     - 0.99
@@ -39,7 +39,7 @@ optim:
   opt_eps: 1.0e-8
   max_norm: 1.0
   grad_clip_eps: 1.0e-6
-  total_step_count: 5000
+  total_step_count: 10000
   warmup_steps: 1
   alpha_min: 1.0e-6
   alpha_max: 1.0e-4
