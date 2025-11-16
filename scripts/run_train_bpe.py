@@ -17,7 +17,7 @@ def delete_if_exists(filename):
 
 def main():
     # Load config info
-    cfg = from_yaml("../scripts/config.yaml")
+    cfg = from_yaml("./scripts/config.yaml")
     max_vocab_size = cfg.model.vocab_size
     chunk_size = cfg.data.pretoken_chunk_size
 
