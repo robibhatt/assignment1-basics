@@ -7,7 +7,7 @@ run_cap: 40              # stop globally after 40 runs
 
 early_terminate:         # prune bad configs early
   type: hyperband
-  min_iter: 3            # min checkpoints before considering stopping
+  min_iter: 1000            # min checkpoints before considering stopping
   s: 2                   # aggressiveness of pruning (2 = moderate)
 
 command:
@@ -19,33 +19,33 @@ parameters:
   # --- Core learning parameters ---
   lr:
     distribution: log_uniform_values
-    min: 1e-5
-    max: 5e-3
-
-  weight_decay:
-    distribution: log_uniform_values
-    min: 1e-7
-    max: 1e-3
-
-  opt_eps:
-    distribution: log_uniform_values
-    min: 1e-9
-    max: 1e-6
-
-  grad_clip_eps:
-    distribution: log_uniform_values
-    min: 1e-8
+    min: 1e-6
     max: 1e-4
+
+  # weight_decay:
+  #   distribution: log_uniform_values
+  #   min: 1e-7
+  #   max: 1e-3
+
+  # opt_eps:
+  #   distribution: log_uniform_values
+  #   min: 1e-9
+  #   max: 1e-6
+
+  # grad_clip_eps:
+  #   distribution: log_uniform_values
+  #   min: 1e-8
+  #   max: 1e-4
 
   alpha_min:
     distribution: log_uniform_values
-    min: 1e-7
-    max: 1e-5
+    min: 1e-8
+    max: 1e-6
 
   alpha_max:
     distribution: log_uniform_values
-    min: 1e-5
-    max: 1e-3
+    min: 1e-6
+    max: 5e-4
 
   warmup_steps:
-    values: [1, 2]
+    values: [100, 500, 1000]
