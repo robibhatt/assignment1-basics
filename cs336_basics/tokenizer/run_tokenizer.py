@@ -67,14 +67,26 @@ def tokenize_file_parallel(
     num_workers: int,
     output_dir: str,
     vocab_size: int|None = None,
+    remake: bool|None = None,
 ) -> None:
 
+    # First check if the tokens already exist --if so, then we don't need to remake them
+    
+    # First, make the storage location
+    true_filename = training_text_filename.split("/")[-1] 
+    filename_wo_ext = true_filename.split(".")[0]
+    token_output_prefix = output_dir + '/' + filename_wo_ext
+    token_output_location = token_output_prefix + '_tokens.uint16'
+
+    # Now, check whether those tokens already exist; if so, then don't continue unless forced
+    if os.path.exists(token_output_location) and not remake:
+            return
 
     with open(training_text_filename, "rb") as f:
         num_processes = num_workers
         boundaries = find_chunk_boundaries(f, num_processes, b"<|endoftext|>")
 
-    token_filenames = [output_dir +'/'+str(i)+'.uint16' for i in range(len(boundaries[:-1]))]
+    token_filenames = [token_output_prefix + "_" + str(i)+'.uint16' for i in range(len(boundaries[:-1]))]
     tokenizers = [Tokenizer.from_files(vocab_filepath=vocab_filepath,
                                  merges_filepath=merges_filepath,
                                  special_tokens=special_tokens,
@@ -98,12 +110,12 @@ def tokenize_file_parallel(
         pool.map(_process_chunk, tasks)
 
     # delete shards
-    with open(output_dir+'/'+'tokens.uint16', "wb") as w:
+    with open(token_output_location, "wb") as w:
         for shard in token_filenames:
             with open(shard, "rb") as r:
                 shutil.copyfileobj(r, w)
 
-    assert os.path.exists(output_dir+'/'+'tokens.uint16')
+    assert os.path.exists(token_output_location)
 
     # Delete the shards
     for shard in token_filenames:

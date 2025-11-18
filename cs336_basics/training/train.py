@@ -62,6 +62,10 @@ def make_run_dir(cfg: TrainConfig) -> str:
     return run_dir
 
 
+
+
+
+
 def create_data(cfg: TrainConfig, run_dir: str):
     """
     Tokenize the entire train and valid datasets.
@@ -82,6 +86,10 @@ def create_data(cfg: TrainConfig, run_dir: str):
     vocab_filepath = cfg.data.tokenizer_dir + '/vocab.pkl'
     merges_filepath = cfg.data.tokenizer_dir + '/merges.pkl'
 
+    # do not newly tokenize every single time; use existing tokens if available
+    train_path, train_filename = os.path.split(cfg.data.train_text_path)
+    valid_path, valid_filename = os.path.split(cfg.data.val_text_path)
+
     # tokenize train and validation
     tokenize_file_parallel(training_text_filename=cfg.data.train_text_path,
                            vocab_filepath=vocab_filepath,
@@ -89,7 +97,7 @@ def create_data(cfg: TrainConfig, run_dir: str):
                            special_tokens=cfg.data.special_tokens,
                            chunk_size=cfg.data.tokenizer_chunk_size,
                            num_workers=cfg.data.num_workers,
-                           output_dir=train_dir,
+                           output_dir=train_path,
                            vocab_size=cfg.model.vocab_size)
     tokenize_file_parallel(training_text_filename=cfg.data.val_text_path,
                            vocab_filepath=vocab_filepath,
@@ -97,7 +105,7 @@ def create_data(cfg: TrainConfig, run_dir: str):
                            special_tokens=cfg.data.special_tokens,
                            chunk_size=cfg.data.tokenizer_chunk_size,
                            num_workers=cfg.data.num_workers,
-                           output_dir=valid_dir,
+                           output_dir=valid_path,
                            vocab_size=cfg.model.vocab_size)
 
     # if we are debugging, verify that the tokenizer properly encoded/decoded the data
@@ -116,7 +124,8 @@ def create_data(cfg: TrainConfig, run_dir: str):
 
         # decode the validation text from the encoding
         decoded_text = ''
-        arr = np.fromfile(valid_dir + '/tokens.uint16', dtype=np.uint16)
+        val_token_path = token_loc_from_textpath(cfg.data.val_text_path)
+        arr = np.fromfile(val_token_path, dtype=np.uint16)
         tokenizer = Tokenizer.from_files(vocab_filepath=vocab_filepath,
                                          merges_filepath=merges_filepath,
                                          special_tokens=cfg.data.special_tokens,
@@ -148,11 +157,26 @@ def validation_loss(valid_array: np.ndarray,
                 return total
         return total / len(val_batch_ids)
 
+def token_loc_from_textpath(text_path):
+    file_dir, text_filename = os.path.split(text_path)
+    filename_wo_ext = text_filename.split(".")[0]
+    token_filename = filename_wo_ext + "_tokens.uint16"
+    token_path = os.path.join(file_dir, token_filename)
+    return token_path
+
 
 def run_training_loop(cfg: TrainConfig, run_dir: str, device: torch.device):
+    
+    # Find the location of the training tokens
+    train_token_path = token_loc_from_textpath(cfg.data.train_text_path)
+    val_token_path = token_loc_from_textpath(cfg.data.val_text_path)
+    
+    assert(os.path.exists(train_token_path))
+    assert(os.path.exists(val_token_path))
+    
     # grab data as memmaps
-    train_array = np.memmap(run_dir + '/data/train/tokens.uint16', dtype=np.uint16, mode="r")
-    valid_array = np.memmap(run_dir + '/data/valid/tokens.uint16', dtype=np.uint16, mode="r")
+    train_array = np.memmap(train_token_path, dtype=np.uint16, mode="r")
+    valid_array = np.memmap(val_token_path, dtype=np.uint16, mode="r")
 
     # create the model
     model = TransformerLM(vocab_size=cfg.model.vocab_size,
