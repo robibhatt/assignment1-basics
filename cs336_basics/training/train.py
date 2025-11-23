@@ -239,6 +239,8 @@ def run_training_loop(cfg: TrainConfig, run_dir: str, device: torch.device):
         
         optimizers = [optimizer_adamw]
 
+    # Compile the model
+    model = torch.compile(model)
 
 
     # create a minimal log and checkpoint system
