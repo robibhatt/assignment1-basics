@@ -33,6 +33,7 @@ class DataConfig:
 
 @dataclass
 class OptimConfig:  # optimizer + scheduler
+    use_muon: bool
     lr: float
     betas: List[float]
     weight_decay: float
@@ -43,6 +44,7 @@ class OptimConfig:  # optimizer + scheduler
     warmup_steps: int
     alpha_min: float
     alpha_max: float
+
 
 @dataclass
 class OutputConfig:  # output + eval + checkpoint + wandb control
