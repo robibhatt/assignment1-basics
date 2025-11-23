@@ -17,10 +17,13 @@ from torch import Tensor
 from jaxtyping import Bool, Float, Int
 from cs336_basics.data.data_loader import get_batch
 from cs336_basics.optimizers.adamw import AdamW
+from cs336_basics.optimizers.muon import Muon
 from cs336_basics.optimizers.optimizer_utils import lr_cosine_schedule, clip_gradients
 from cs336_basics.checkpoints.checkpoint import save_checkpoint
+from cs336_basics.checkpoints.checkpoint import save_checkpoint_multi
 from cs336_basics.torch_utils import cross_entropy
 from tqdm import tqdm
+
 
 
 def count_graph_nodes_from_loss(loss) -> int:
@@ -190,15 +193,53 @@ def run_training_loop(cfg: TrainConfig, run_dir: str, device: torch.device):
                           dtype=getattr(torch, cfg.model.dtype),
                           weight_tying=cfg.model.weight_tying)
 
-    # compile the model (speeds up training)
-    # model = torch.compile(model)
 
-    # create the optimizer
-    optimizer = AdamW(params=model.parameters(),
-                      lr=cfg.optim.lr,
-                      betas=tuple(cfg.optim.betas),
-                      weight_decay=cfg.optim.weight_decay,
-                      eps=cfg.optim.opt_eps)
+    # Make the optimizers
+    if cfg.optim.use_muon:
+        # Only use Muon on the certain params, AdamW gets everything else
+
+        # Muon gets the internal matrix params
+        muon_params = [p for p in model.layers.parameters() if p.ndim == 2]
+
+        # Adam gets everything else in the transformer
+        excl1 = model.token_embeddings.parameters()
+        excl2 = model.lm_head.parameters()
+        excl3 = [p for p in model.layers.parameters() if p.ndim != 2]
+
+        adamw_params = list(excl1) + list(excl2) + list(excl3)
+
+
+
+        # Make the optimizers
+        optimizer_muon = Muon(params=muon_params,
+                            lr=cfg.optim.lr,
+                            mu=0.95,
+                            weight_decay=cfg.optim.weight_decay,
+                            eps=cfg.optim.opt_eps,
+                            )
+
+        optimizer_adamw = AdamW(params=adamw_params,
+                        lr=cfg.optim.lr,
+                        betas=tuple(cfg.optim.betas),
+                        weight_decay=cfg.optim.weight_decay,
+                        eps=cfg.optim.opt_eps,
+                        )
+
+        optimizers = [optimizer_adamw, optimizer_muon]
+    else:
+        # if not using Muon, AdamW gets everything
+        adamw_params = model.parameters()
+
+        optimizer_adamw = AdamW(params=adamw_params,
+                    lr=cfg.optim.lr,
+                    betas=tuple(cfg.optim.betas),
+                    weight_decay=cfg.optim.weight_decay,
+                    eps=cfg.optim.opt_eps,
+                    )
+        
+        optimizers = [optimizer_adamw]
+
+
 
     # create a minimal log and checkpoint system
     os.makedirs(run_dir + '/logs', exist_ok=True)
@@ -221,7 +262,8 @@ def run_training_loop(cfg: TrainConfig, run_dir: str, device: torch.device):
 
     for step in tqdm(range(cfg.optim.total_step_count + 1), desc="Training"):
         # zero out all the gradients
-        optimizer.zero_grad()
+        for optimizer in optimizers:
+            optimizer.zero_grad()
 
         # grab the batch to train on
         if not cfg.out.debug:
@@ -255,6 +297,7 @@ def run_training_loop(cfg: TrainConfig, run_dir: str, device: torch.device):
                                                     model=model,
                                                     cfg=cfg,
                                                     device=device)
+
             metrics['train_loss'] = train_loss_avg
 
             log_metrics(step=step, log_path=log_path, metrics=metrics)
@@ -273,8 +316,8 @@ def run_training_loop(cfg: TrainConfig, run_dir: str, device: torch.device):
         # every so often we checkpoint
         if step % cfg.out.checkpoint_interval == 0:
             # this is the model AFTER we have trained for step steps
-            save_checkpoint(model=model,
-                            optimizer=optimizer,
+            save_checkpoint_multi(model=model,
+                            optimizers=optimizers,
                             iteration=step,
                             out=checkpoint_path + '/' + str(step))
 
@@ -297,11 +340,14 @@ def run_training_loop(cfg: TrainConfig, run_dir: str, device: torch.device):
                                         T_w=cfg.optim.warmup_steps,
                                         T_c=cfg.optim.total_step_count - cfg.optim.warmup_steps)
 
-        for group in optimizer.param_groups:
-            group['lr'] = current_lr
+        for optimizer in optimizers:
+            for group in optimizer.param_groups:
+                group['lr'] = current_lr
 
         # finally we do an optimizer update
-        optimizer.step()
+        for optimizer in optimizers:
+            optimizer.step()
+
 
 
 def _set_by_dotted_attr(obj, dotted_key: str, value):
