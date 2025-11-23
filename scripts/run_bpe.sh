@@ -1,12 +1,14 @@
 #!/bin/bash
-#SBATCH --job-name=ibor_train_bpe
+#SBATCH --job-name=jalani_train_bpe
+#SBATCH --mail-type=BEGIN,END
 #SBATCH --output=logs/train_bpe.out
 #SBATCH --error=logs/train_bpe.err
-#SBATCH --partition=2080-galvani
-#SBATCH --gres=gpu:1
+#SBATCH --partition=standard
+## SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=100G
 #SBATCH --time=30:00:00
+#SBATCH --acount=jalaniw0
 
 # Diagnostic and Analysis Phase - please leave these in.
 scontrol show job $SLURM_JOB_ID
