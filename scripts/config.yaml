@@ -2,18 +2,18 @@ out:
   debug: false
   profile: true
   seed: 123
-  home_dir: "experiments/test"
-  checkpoint_interval: 1000
-  log_interval: 2
+  home_dir: "/scratch/jalaniw_root/jalaniw0/jalaniw"
+  checkpoint_interval: 10001
+  log_interval: 1
   val_batches: 1
-  use_wandb: false
-  wandb_entity: "testjkw"
+  use_wandb: true
+  wandb_entity: "cs336_tests"
 
 model:
-  vocab_size: 10000
+  vocab_size: 32000
   context_length: 256
   d_model: 512
-  num_layers: 4
+  num_layers: 6
   num_heads: 16
   d_ff: 1344
   rope_theta: 10000.0
@@ -21,14 +21,14 @@ model:
   weight_tying: false
 
 data:
-  train_text_path: data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-train.txt
-  val_text_path: data/TinyStoriesV2-GPT4/TinyStoriesV2-GPT4-valid.txt
-  tokenizer_dir: data/TinyStoriesV2-GPT4/tokenizer
-  num_workers: 5
+  train_text_path: data/owt/owt_train.txt
+  val_text_path: data/owt/owt_valid.txt
+  tokenizer_dir: data/owt/tokenizer
+  num_workers: 4 
   pretoken_chunk_size: 64000
   special_tokens: []
   tokenizer_chunk_size: 64000
-  batch_size: 32
+  batch_size: 128
 
 optim:
   use_muon: true
@@ -39,8 +39,8 @@ optim:
   weight_decay: 1.0e-4
   opt_eps: 1.0e-8
   max_norm: 1.0
-  grad_clip_eps: 1.0e-7
-  total_step_count: 10000
-  warmup_steps: 100
-  alpha_min: 1.0e-6
+  grad_clip_eps: 1.0e-8
+  total_step_count: 4000
+  warmup_steps: 500
+  alpha_min: 1.0e-8
   alpha_max: 3.0e-3

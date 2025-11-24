@@ -4,11 +4,11 @@
 #SBATCH --output=logs/train_bpe.out
 #SBATCH --error=logs/train_bpe.err
 #SBATCH --partition=standard
-## SBATCH --gres=gpu:1
+##SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=100G
-#SBATCH --time=30:00:00
-#SBATCH --acount=jalaniw0
+#SBATCH --mem=40G
+#SBATCH --time=12:00:00
+#SBATCH --account=jalaniw0
 
 # Diagnostic and Analysis Phase - please leave these in.
 scontrol show job $SLURM_JOB_ID

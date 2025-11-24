@@ -17,7 +17,6 @@ def save_checkpoint(
     obj['iteration'] = iteration
 
     torch.save(obj, out)
-    return
 
 
 def load_checkpoint(

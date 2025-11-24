@@ -248,7 +248,6 @@ def run_training_loop(cfg: TrainConfig, run_dir: str, device: torch.device):
         optimizers = [optimizer_adamw]
         # opt_names = ["adamw"]
 
-    breakpoint()
 
     # create a minimal log and checkpoint system
     os.makedirs(run_dir + '/logs', exist_ok=True)
