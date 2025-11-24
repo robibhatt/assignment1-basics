@@ -28,7 +28,7 @@ class Muon(torch.optim.Optimizer):
             lambda_: float = group["lambda_"]
             eps: float = group["eps"]
 
-            comp_orthog = torch.compile(orthog)
+            comp_orthog = orthog
             for p in group["params"]:
                 if p.grad is None:
                     continue
@@ -95,7 +95,7 @@ def orthog(G, eps = 1e-7):
         if flip:
             G = G.T
         # normalize the matrix so stuff doesn't blowup
-        G = G/(torch.linalg.matrix_norm(G) + eps)
+        G = G/(torch.linalg.matrix_norm(G, keepdim=True) + eps)
         I = torch.eye(G.shape[1]).bfloat16()
         for a,b,c in abc_list:
             # faster quintic computation

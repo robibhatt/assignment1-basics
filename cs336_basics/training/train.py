@@ -194,38 +194,46 @@ def run_training_loop(cfg: TrainConfig, run_dir: str, device: torch.device):
                           weight_tying=cfg.model.weight_tying)
 
 
+    muon_lr_ratio = 0.02/cfg.optim.alpha_max
+
     # Make the optimizers
     if cfg.optim.use_muon:
         # Only use Muon on the certain params, AdamW gets everything else
 
         # Muon gets the internal matrix params
         muon_params = [p for p in model.layers.parameters() if p.ndim == 2]
+        # muon_names = [name for name, p in model.layers.named_parameters() if p.ndim == 2]
+
+        # adamw_params = [p for name, p in model.named_parameters() if name not in muon_names]
 
         # Adam gets everything else in the transformer
         excl1 = model.token_embeddings.parameters()
         excl2 = model.lm_head.parameters()
         excl3 = [p for p in model.layers.parameters() if p.ndim != 2]
+        excl4 = model.rope.parameters()
+        excl5 = model.ln_final.parameters()
 
-        adamw_params = list(excl1) + list(excl2) + list(excl3)
+        adamw_params = list(excl1) + list(excl2) + list(excl3) + list(excl4) + list(excl5)
 
 
 
         # Make the optimizers
         optimizer_muon = Muon(params=muon_params,
-                            lr=cfg.optim.lr,
+                            lr=cfg.optim.alpha_max*muon_lr_ratio,
                             mu=0.95,
                             weight_decay=cfg.optim.weight_decay,
                             eps=cfg.optim.opt_eps,
                             )
 
         optimizer_adamw = AdamW(params=adamw_params,
-                        lr=cfg.optim.lr,
+                        lr=cfg.optim.alpha_max,
                         betas=tuple(cfg.optim.betas),
                         weight_decay=cfg.optim.weight_decay,
                         eps=cfg.optim.opt_eps,
                         )
 
         optimizers = [optimizer_adamw, optimizer_muon]
+        # opt_names = ["adamw", "muon"]
     else:
         # if not using Muon, AdamW gets everything
         adamw_params = model.parameters()
@@ -238,8 +246,9 @@ def run_training_loop(cfg: TrainConfig, run_dir: str, device: torch.device):
                     )
         
         optimizers = [optimizer_adamw]
+        # opt_names = ["adamw"]
 
-
+    breakpoint()
 
     # create a minimal log and checkpoint system
     os.makedirs(run_dir + '/logs', exist_ok=True)
@@ -329,9 +338,9 @@ def run_training_loop(cfg: TrainConfig, run_dir: str, device: torch.device):
         loss.backward()
 
         # clip them
-        clip_gradients(parameters=model.parameters(),
-                       max_norm=cfg.optim.max_norm,
-                       eps=cfg.optim.grad_clip_eps)
+        # clip_gradients(parameters=model.parameters(),
+        #                max_norm=cfg.optim.max_norm,
+        #                eps=cfg.optim.grad_clip_eps)
 
         # schedule the learning rate
         current_lr = lr_cosine_schedule(t=step,
@@ -340,9 +349,12 @@ def run_training_loop(cfg: TrainConfig, run_dir: str, device: torch.device):
                                         T_w=cfg.optim.warmup_steps,
                                         T_c=cfg.optim.total_step_count - cfg.optim.warmup_steps)
 
-        for optimizer in optimizers:
-            for group in optimizer.param_groups:
-                group['lr'] = current_lr
+        for group in optimizer_adamw.param_groups:
+            group['lr'] = current_lr
+        
+        if cfg.optim.use_muon:
+            for group in optimizer_muon.param_groups:
+                group['lr'] = current_lr*muon_lr_ratio
 
         # finally we do an optimizer update
         for optimizer in optimizers:
