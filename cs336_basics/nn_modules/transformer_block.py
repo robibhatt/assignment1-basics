@@ -36,7 +36,7 @@ class TransformerBlock(nn.Module):
                     device=device,
                     dtype=dtype)
         
-        self.ffn = SwiGLU(d_model=d_model,
+        self.ffn = ReLU2(d_model=d_model,
                           d_ff=d_ff,
                           device=device,
                           dtype=dtype)

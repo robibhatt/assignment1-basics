@@ -6,6 +6,7 @@ from jaxtyping import Bool, Float, Int
 from cs336_basics.torch_utils import scaled_dot_product_attention
 from cs336_basics.nn_modules.rope import RoPE
 from cs336_basics.nn_modules.linear import Linear
+from cs336_basics.nn_modules.rms_norm import RMSNorm
 
 class MultiHeadSelfAttention(nn.Module):
 
@@ -48,6 +49,19 @@ class MultiHeadSelfAttention(nn.Module):
             a=-3*sigma,
             b=3*sigma
         )
+
+        self.lnq = RMSNorm(
+                d_model=d_model,
+                device=device,
+                dtype=dtype
+                )
+
+        self.lnk = RMSNorm(
+                d_model=d_model,
+                device=device,
+                dtype=dtype
+                )
+            
         
 
     def forward(self, 
@@ -69,6 +83,10 @@ class MultiHeadSelfAttention(nn.Module):
         if self.use_rope:
             queries = self.rope(queries, token_positions=token_positions)
             keys = self.rope(keys, token_positions=token_positions)
+
+        queries = self.lnq(queries)
+
+        keys = self.lnk(keys)
 
         new_values = scaled_dot_product_attention(Q=queries, K=keys, V=values, mask=mask)
         """ new values have shape ... h seq_len d_v"""
