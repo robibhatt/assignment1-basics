@@ -17,7 +17,8 @@ from torch import Tensor
 from jaxtyping import Bool, Float, Int
 from cs336_basics.data.data_loader import get_batch
 from cs336_basics.optimizers.adamw import AdamW
-from cs336_basics.optimizers.muon import Muon
+# from cs336_basics.optimizers.muon import Muon
+from cs336_basics.optimizers.luon import Luon as Muon
 from cs336_basics.optimizers.optimizer_utils import lr_cosine_schedule, clip_gradients
 from cs336_basics.checkpoints.checkpoint import save_checkpoint
 from cs336_basics.checkpoints.checkpoint import save_checkpoint_multi
